@@ -7,6 +7,7 @@ import { MemoryStore } from "./memory.js";
 import { Doctor } from "./doctor.js";
 import { ActivityReporter } from "./reporter.js";
 import { SelfImprovementScheduler } from "./scheduler.js";
+import { SkillLoader, type Skill } from "./skills/SkillLoader.js";
 
 function isOwner(config: AppConfig, userId: number | undefined): boolean {
   return Boolean(userId && String(userId) === config.TELEGRAM_OWNER_ID);
@@ -23,6 +24,7 @@ export function createTelegramBot(
   memory: MemoryStore,
   doctor: Doctor,
   reporter: ActivityReporter,
+  skillLoader: SkillLoader,
   scheduler: () => SelfImprovementScheduler,
 ): Telegraf {
   requireTelegramConfig(config);
@@ -94,6 +96,21 @@ export function createTelegramBot(
     await ctx.reply(await doctor.run());
   });
 
+  bot.command("skills", async (ctx) => {
+    await ctx.reply(formatSkillsList(await skillLoader.loadAll()));
+  });
+
+  bot.command("skill", async (ctx) => {
+    const name = commandText(ctx.message.text);
+    if (!name) {
+      await ctx.reply("Usage: /skill <name>");
+      return;
+    }
+
+    const skill = await skillLoader.getSkill(name);
+    await ctx.reply(formatSkillContent(skill));
+  });
+
   bot.command("autopilot_status", async (ctx) => {
     await ctx.reply(scheduler().status());
   });
@@ -134,4 +151,53 @@ export function createTelegramBot(
 
 function commandText(text: string): string {
   return text.replace(/^\/\S+\s*/, "").trim();
+}
+
+export function formatSkillsList(skills: Skill[], maxLength = 3500): string {
+  const body =
+    skills
+      .map((skill) =>
+        [
+          `${skill.name} v${skill.version}`,
+          skill.metadata.security,
+          skill.eligible ? "eligible" : "not eligible",
+          skill.missingRequirements.length > 0
+            ? `missing: ${skill.missingRequirements.join(", ")}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" | "),
+      )
+      .join("\n") || "No skills found.";
+
+  return truncateTelegramText(["Skills:", body].join("\n"), maxLength);
+}
+
+export function formatSkillContent(skill: Skill | null, maxLength = 3500): string {
+  if (!skill) {
+    return "Skill not found.";
+  }
+
+  return truncateTelegramText(
+    [
+      `${skill.name} v${skill.version} | ${skill.metadata.security} | ${
+        skill.eligible ? "eligible" : "not eligible"
+      }`,
+      skill.missingRequirements.length > 0
+        ? `Missing: ${skill.missingRequirements.join(", ")}`
+        : "",
+      "",
+      skill.content,
+    ]
+      .filter((line) => line !== "")
+      .join("\n"),
+    maxLength,
+  );
+}
+
+function truncateTelegramText(text: string, maxLength: number): string {
+  if (text.length <= maxLength) {
+    return text;
+  }
+  return `${text.slice(0, Math.max(0, maxLength - 24)).trimEnd()}\n[truncated]`;
 }

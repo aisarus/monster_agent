@@ -8,6 +8,7 @@ import { LlmRouter } from "../llm/router.js";
 import { MemoryStore } from "../memory.js";
 import { RuntimeState } from "../runtime-state.js";
 import { SkillLoader } from "../skills/SkillLoader.js";
+import { SkillWriter } from "../skills/SkillWriter.js";
 import { TaskQueue } from "../tasks.js";
 import { ToolRegistry } from "../tools/registry.js";
 import { WorkspaceTools } from "../tools/workspace.js";
@@ -30,7 +31,8 @@ const runtimeState = new RuntimeState(config.RUNTIME_STATE_FILE);
 const cooldowns = new ModelCooldowns(config.MODEL_COOLDOWNS_FILE);
 const llm = new LlmRouter(config, budget, cooldowns);
 const skillLoader = new SkillLoader();
-const tools = new ToolRegistry(new WorkspaceTools(config.WORKSPACE_ROOT), skillLoader);
+const skillWriter = new SkillWriter("data/workspace/skills", skillLoader);
+const tools = new ToolRegistry(new WorkspaceTools(config.WORKSPACE_ROOT), skillLoader, skillWriter);
 const bootstrap = new BootstrapLoader(
   config.BOOTSTRAP_DIR,
   config.BOOTSTRAP_MAX_FILE_CHARS,

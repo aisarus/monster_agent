@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import { buildTaskUserPrompt } from "../src/agent.js";
 import { SkillLoader } from "../src/skills/SkillLoader.js";
+import { SkillWriter } from "../src/skills/SkillWriter.js";
 import { ToolRegistry } from "../src/tools/registry.js";
 import { WorkspaceTools } from "../src/tools/workspace.js";
 
@@ -35,6 +36,7 @@ test("read_skill returns full skill content", async () => {
   const registry = new ToolRegistry(
     new WorkspaceTools("."),
     new SkillLoader("data/workspace/skills"),
+    new SkillWriter("data/workspace/skills"),
   );
 
   const result = await registry.run({ tool: "read_skill", args: { name: "git-workflow" } });

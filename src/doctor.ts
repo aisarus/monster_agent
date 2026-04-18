@@ -23,6 +23,7 @@ export class Doctor {
     checks.push(checkValue("Telegram owner", Boolean(this.config.TELEGRAM_OWNER_ID)));
     checks.push(checkValue("Gemini key", Boolean(this.config.GEMINI_API_KEY), "warn"));
     checks.push(checkValue("OpenAI key", Boolean(this.config.OPENAI_API_KEY), "warn"));
+    checks.push(checkValue("GitHub token", Boolean(this.config.GITHUB_TOKEN), "warn"));
 
     checks.push(await checkFile("Memory file", this.config.MEMORY_FILE));
     checks.push(await checkJsonFile("Tasks JSON", this.config.TASKS_FILE));
@@ -36,6 +37,15 @@ export class Doctor {
       name: "Git repo",
       status: git.ok ? "pass" : "warn",
       detail: git.ok ? "available" : "not initialized",
+    });
+
+    const remote = await workspace.runCommand("git remote get-url origin");
+    checks.push({
+      name: "GitHub origin",
+      status: remote.ok && /^https:\/\/github\.com\/.+\/.+\.git$/.test(remote.output.trim())
+        ? "pass"
+        : "warn",
+      detail: remote.ok ? redactUrl(remote.output.trim()) : "missing",
     });
 
     const summary = checks
@@ -90,4 +100,8 @@ function icon(status: DoctorCheck["status"]): string {
   if (status === "pass") return "OK";
   if (status === "warn") return "WARN";
   return "FAIL";
+}
+
+function redactUrl(url: string): string {
+  return url.replace(/x-access-token:[^@]+@/, "x-access-token:[redacted]@");
 }

@@ -1,5 +1,9 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { expect, test } from "vitest";
 import { buildTaskUserPrompt } from "../src/agent.js";
+import { SkillEvaluator } from "../src/skills/SkillEvaluator.js";
 import { SkillLoader } from "../src/skills/SkillLoader.js";
 import { SkillWriter } from "../src/skills/SkillWriter.js";
 import { ToolRegistry } from "../src/tools/registry.js";
@@ -33,15 +37,21 @@ test("assembles available skills into the task prompt", async () => {
 });
 
 test("read_skill returns full skill content", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "monster-agent-skill-injection-"));
   const registry = new ToolRegistry(
     new WorkspaceTools("."),
     new SkillLoader("data/workspace/skills"),
     new SkillWriter("data/workspace/skills"),
+    new SkillEvaluator(join(dir, "metrics.json")),
   );
 
-  const result = await registry.run({ tool: "read_skill", args: { name: "git-workflow" } });
+  try {
+    const result = await registry.run({ tool: "read_skill", args: { name: "git-workflow" } });
 
-  expect(result.ok).toBe(true);
-  expect(result.output).toContain("# Git Workflow");
-  expect(result.output).toContain("## Workflow");
+    expect(result.ok).toBe(true);
+    expect(result.output).toContain("# Git Workflow");
+    expect(result.output).toContain("## Workflow");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });

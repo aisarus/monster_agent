@@ -30,6 +30,7 @@ const envSchema = z.object({
   MEMORY_FILE: z.string().default("data/memory/AGENT_MEMORY.md"),
   TASKS_FILE: z.string().default("data/tasks/tasks.json"),
   BUDGET_FILE: z.string().default("data/budget/usage.json"),
+  SKILL_METRICS_FILE: z.string().default("data/skills/metrics.json"),
   MODEL_COOLDOWNS_FILE: z.string().default("data/models/cooldowns.json"),
   RUNTIME_STATE_FILE: z.string().default("data/runtime/state.json"),
   REPORT_INTERVAL_MINUTES: z.coerce.number().int().positive().default(30),

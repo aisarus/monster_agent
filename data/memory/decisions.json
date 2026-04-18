@@ -31,6 +31,14 @@
       "decision": "Add SkillWriter as the single write path for creating and updating SKILL.md files, then expose safe skill management through agent tools and Telegram read commands.",
       "reason": "Self-improvement needs a persistent way to capture reusable workflows without bypassing SkillLoader validation or broadening the runtime surface.",
       "result": "Added SkillWriter, create/list/update skill tools, /skills and /skill Telegram support, prompt rules for reusable skills, and tests for writer, registry tools, and Telegram formatting."
+    },
+    {
+      "at": "2026-04-18T18:40:00.000Z",
+      "id": "skill-05-skill-evaluator-metrics",
+      "scope": "SKILL-05",
+      "decision": "Persist skill invocation and task outcome metrics through a SkillEvaluator and use those metrics to prioritize self-improvement tasks.",
+      "reason": "The skills system needs measurable feedback so the agent can improve weak workflows instead of choosing self-improvement work blindly.",
+      "result": "Added skill metrics storage, read_skill invocation tracking, task result recording for used skills, scheduler selection for underperforming/stale skills, and tests for evaluator, registry tracking, and scheduler prioritization."
     }
   ]
 }

@@ -1,5 +1,6 @@
 import { AgentRuntime } from "./agent.js";
 import type { AppConfig } from "./config.js";
+import { SkillEvaluator } from "./skills/SkillEvaluator.js";
 import { TaskQueue } from "./tasks.js";
 
 export class SelfImprovementScheduler {
@@ -11,6 +12,7 @@ export class SelfImprovementScheduler {
     private readonly config: AppConfig,
     private readonly agent: AgentRuntime,
     private readonly tasks: TaskQueue,
+    private readonly skillEvaluator: SkillEvaluator,
     private readonly notify: (message: string) => Promise<void>,
   ) {
     this.enabled = config.SELF_IMPROVEMENT_ENABLED;
@@ -52,10 +54,18 @@ export class SelfImprovementScheduler {
       return "Autopilot run skipped: queue is busy.";
     }
 
-    const task = await this.agent.enqueue(`[autopilot:self-improvement]\n${this.config.SELF_IMPROVEMENT_TASK}`);
+    const taskText = await this.buildNextTaskText();
+    const task = await this.agent.enqueue(taskText);
     this.agent.kick();
     this.lastRunAt = new Date().toISOString();
     return `Autopilot queued task ${task.id.slice(0, 8)}.`;
+  }
+
+  async buildNextTaskText(): Promise<string> {
+    return (
+      (await this.skillEvaluator.buildImprovementTask()) ??
+      `[autopilot:self-improvement]\n${this.config.SELF_IMPROVEMENT_TASK}`
+    );
   }
 
   private scheduleNext(delayMs = this.config.SELF_IMPROVEMENT_INTERVAL_MINUTES * 60 * 1000): void {

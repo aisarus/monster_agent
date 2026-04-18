@@ -9,6 +9,7 @@ import { ToolRegistry } from "./tools/registry.js";
 import { BootstrapLoader } from "./bootstrap.js";
 import { RuntimeState } from "./runtime-state.js";
 import { SkillLoader } from "./skills/SkillLoader.js";
+import { SkillEvaluator } from "./skills/SkillEvaluator.js";
 
 export type AgentEvents = {
   onTaskStarted?: (task: AgentTask) => Promise<void>;
@@ -27,6 +28,7 @@ export class AgentRuntime {
     private readonly tools: ToolRegistry,
     private readonly bootstrap: BootstrapLoader,
     private readonly skillLoader: SkillLoader,
+    private readonly skillEvaluator: SkillEvaluator,
     private readonly runtimeState: RuntimeState,
     private readonly maxSteps: number,
     private readonly memoryContextChars: number,
@@ -102,6 +104,7 @@ export class AgentRuntime {
   private async runTask(task: AgentTask): Promise<void> {
     const runningTask = await this.tasks.mark(task.id, "running");
     await this.events.onTaskStarted?.(runningTask);
+    const usedSkillNames = new Set<string>();
 
     try {
       const memory = await this.memory.read();
@@ -127,21 +130,37 @@ export class AgentRuntime {
         },
       ];
 
-      const result = await this.runAgentLoop(task.id, messages);
+      const result = await this.runAgentLoop(task.id, messages, usedSkillNames);
 
       const completedTask = await this.tasks.mark(task.id, "completed", {
         result: compactAssistantReply(result),
       });
+      await this.skillEvaluator.recordTaskResult({
+        taskId: task.id,
+        skillNames: [...usedSkillNames],
+        success: true,
+      });
       await this.events.onTaskCompleted?.(completedTask);
     } catch (error) {
+      const compactError = compactTaskError(error);
       const failedTask = await this.tasks.mark(task.id, "failed", {
-        error: compactTaskError(error),
+        error: compactError,
+      });
+      await this.skillEvaluator.recordTaskResult({
+        taskId: task.id,
+        skillNames: [...usedSkillNames],
+        success: false,
+        failureReason: compactError,
       });
       await this.events.onTaskFailed?.(failedTask);
     }
   }
 
-  private async runAgentLoop(taskId: string, messages: ChatMessage[]): Promise<string> {
+  private async runAgentLoop(
+    taskId: string,
+    messages: ChatMessage[],
+    usedSkillNames: Set<string>,
+  ): Promise<string> {
     let parseFailures = 0;
     const toolTrace: string[] = [];
     const repeatedCalls = new Map<string, number>();
@@ -201,6 +220,12 @@ export class AgentRuntime {
       }
 
       const toolResult = await this.tools.run(action.call);
+      if (action.call.tool === "read_skill" && toolResult.ok) {
+        const name = action.call.args?.name;
+        if (typeof name === "string") {
+          usedSkillNames.add(name);
+        }
+      }
       toolTrace.push(formatToolTrace(step, action.call.tool, toolResult.ok, toolResult.output));
       messages.push({
         role: "assistant",

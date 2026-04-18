@@ -2,6 +2,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, test } from "vitest";
+import { SkillEvaluator } from "../src/skills/SkillEvaluator.js";
 import { SkillLoader } from "../src/skills/SkillLoader.js";
 import { SkillWriter } from "../src/skills/SkillWriter.js";
 import { ToolRegistry } from "../src/tools/registry.js";
@@ -108,7 +109,8 @@ test("deleteSkill removes an existing skill", async () => {
 });
 
 test("registry skill tools list, create, and update skills", async () => {
-  const registry = new ToolRegistry(new WorkspaceTools("."), loader, writer);
+  const evaluator = new SkillEvaluator(join(dir, "metrics.json"));
+  const registry = new ToolRegistry(new WorkspaceTools("."), loader, writer, evaluator);
 
   const created = await registry.run({
     tool: "create_skill",

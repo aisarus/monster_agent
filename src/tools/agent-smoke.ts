@@ -7,6 +7,7 @@ import { ModelCooldowns } from "../llm/failover.js";
 import { LlmRouter } from "../llm/router.js";
 import { MemoryStore } from "../memory.js";
 import { RuntimeState } from "../runtime-state.js";
+import { SkillEvaluator } from "../skills/SkillEvaluator.js";
 import { SkillLoader } from "../skills/SkillLoader.js";
 import { SkillWriter } from "../skills/SkillWriter.js";
 import { TaskQueue } from "../tasks.js";
@@ -32,7 +33,13 @@ const cooldowns = new ModelCooldowns(config.MODEL_COOLDOWNS_FILE);
 const llm = new LlmRouter(config, budget, cooldowns);
 const skillLoader = new SkillLoader();
 const skillWriter = new SkillWriter("data/workspace/skills", skillLoader);
-const tools = new ToolRegistry(new WorkspaceTools(config.WORKSPACE_ROOT), skillLoader, skillWriter);
+const skillEvaluator = new SkillEvaluator(config.SKILL_METRICS_FILE);
+const tools = new ToolRegistry(
+  new WorkspaceTools(config.WORKSPACE_ROOT),
+  skillLoader,
+  skillWriter,
+  skillEvaluator,
+);
 const bootstrap = new BootstrapLoader(
   config.BOOTSTRAP_DIR,
   config.BOOTSTRAP_MAX_FILE_CHARS,
@@ -49,6 +56,7 @@ const runtime = new AgentRuntime(
   tools,
   bootstrap,
   skillLoader,
+  skillEvaluator,
   runtimeState,
   config.MAX_AGENT_STEPS,
   config.AGENT_MEMORY_CONTEXT_CHARS,

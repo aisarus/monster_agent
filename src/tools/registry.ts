@@ -2,6 +2,7 @@ import { WorkspaceTools, type ToolResult } from "./workspace.js";
 import { SkillLoader } from "../skills/SkillLoader.js";
 import { SkillWriter, type SkillContent } from "../skills/SkillWriter.js";
 import type { SkillSecurity } from "../skills/SkillLoader.js";
+import { SkillEvaluator } from "../skills/SkillEvaluator.js";
 
 export type AgentToolName =
   | "list_files"
@@ -28,6 +29,7 @@ export class ToolRegistry {
     private readonly workspace: WorkspaceTools,
     private readonly skillLoader: SkillLoader,
     private readonly skillWriter: SkillWriter,
+    private readonly skillEvaluator: SkillEvaluator,
   ) {}
 
   async run(call: AgentToolCall): Promise<ToolResult> {
@@ -83,6 +85,7 @@ export class ToolRegistry {
       };
     }
 
+    await this.skillEvaluator.recordInvocation(skill);
     return { ok: true, output: skill.content };
   }
 

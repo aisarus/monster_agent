@@ -1,0 +1,12 @@
+{
+  "decisions": [
+    {
+      "at": "2026-04-18T17:36:00.000Z",
+      "id": "skill-01-starter-skill-format",
+      "scope": "SKILL-01",
+      "decision": "Use a strict frontmatter plus checklist format for starter skills.",
+      "reason": "The upcoming SkillLoader needs predictable metadata, eligibility requirements, and compact workflows.",
+      "result": "Added git-workflow, code-review, self-improvement, and telegram-report starter skills."
+    }
+  ]
+}

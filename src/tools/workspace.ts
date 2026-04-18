@@ -194,7 +194,7 @@ export class WorkspaceTools {
       });
       return {
         ok: true,
-        output: [stdout, stderr].filter(Boolean).join("\n").trim() || "(no output)",
+        output: [stdout, stderr].filter(Boolean).join("\n").trim(),
       };
     } catch (error) {
       const err = error as { stdout?: string; stderr?: string; message?: string };

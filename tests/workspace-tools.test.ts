@@ -15,6 +15,9 @@ beforeEach(async () => {
   await execFileAsync("git", ["init"], { cwd: dir });
   await execFileAsync("git", ["config", "user.name", "Test Agent"], { cwd: dir });
   await execFileAsync("git", ["config", "user.email", "test@example.local"], { cwd: dir });
+  await writeFile(join(dir, "README.md"), "test repo");
+  await execFileAsync("git", ["add", "README.md"], { cwd: dir });
+  await execFileAsync("git", ["commit", "-m", "Initial commit"], { cwd: dir });
 });
 
 afterEach(async () => {

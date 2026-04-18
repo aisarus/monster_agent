@@ -67,12 +67,20 @@ npm run dev
 - `/status` - current queue and budget status.
 - `/memory` - short memory file summary.
 - `/stop` - request emergency stop for the active task.
+- `/pause` - keep accepting tasks but stop running the queue.
+- `/resume` - resume queue processing.
+- `/runtime` - show runtime pause state.
+- `/report` - send a plain-language activity report now.
+- `/chat <message>` or `/ask <message>` - talk to the LLM directly without queueing an agent task.
 - `/doctor` - self-diagnostics for config, workspace, memory, and git.
 - `/autopilot_status` - self-improvement scheduler status.
 - `/autopilot_on` - enable periodic self-improvement tasks.
 - `/autopilot_off` - disable periodic self-improvement tasks.
 - `/autopilot_run` - enqueue one self-improvement task now if queue is idle.
 - Any other text message becomes a task.
+
+The agent sends an activity report every `REPORT_INTERVAL_MINUTES` minutes. Direct chat replies do not
+pause the queue or autopilot.
 
 ## Safety Rules
 

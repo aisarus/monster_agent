@@ -6,6 +6,7 @@ import { loadConfig } from "../config.js";
 import { ModelCooldowns } from "../llm/failover.js";
 import { LlmRouter } from "../llm/router.js";
 import { MemoryStore } from "../memory.js";
+import { RuntimeState } from "../runtime-state.js";
 import { TaskQueue } from "../tasks.js";
 import { ToolRegistry } from "../tools/registry.js";
 import { WorkspaceTools } from "../tools/workspace.js";
@@ -24,6 +25,7 @@ const budget = new BudgetTracker(
   config.MONTHLY_BUDGET_USD,
 );
 const tasks = new TaskQueue(config.TASKS_FILE);
+const runtimeState = new RuntimeState(config.RUNTIME_STATE_FILE);
 const cooldowns = new ModelCooldowns(config.MODEL_COOLDOWNS_FILE);
 const llm = new LlmRouter(config, budget, cooldowns);
 const tools = new ToolRegistry(new WorkspaceTools(config.WORKSPACE_ROOT));
@@ -42,6 +44,7 @@ const runtime = new AgentRuntime(
   budget,
   tools,
   bootstrap,
+  runtimeState,
   config.MAX_AGENT_STEPS,
   config.AGENT_MEMORY_CONTEXT_CHARS,
   config.AGENT_TOOL_OUTPUT_CHARS,

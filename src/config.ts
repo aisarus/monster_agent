@@ -31,6 +31,8 @@ const envSchema = z.object({
   TASKS_FILE: z.string().default("data/tasks/tasks.json"),
   BUDGET_FILE: z.string().default("data/budget/usage.json"),
   MODEL_COOLDOWNS_FILE: z.string().default("data/models/cooldowns.json"),
+  RUNTIME_STATE_FILE: z.string().default("data/runtime/state.json"),
+  REPORT_INTERVAL_MINUTES: z.coerce.number().int().positive().default(30),
   SELF_IMPROVEMENT_ENABLED: z.coerce.boolean().default(false),
   SELF_IMPROVEMENT_INTERVAL_MINUTES: z.coerce.number().int().positive().default(60),
   SELF_IMPROVEMENT_TASK: z

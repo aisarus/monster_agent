@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
@@ -18,7 +19,7 @@ export async function readTextFile(filePath: string, fallback = ""): Promise<str
 
 export async function writeTextFile(filePath: string, content: string): Promise<void> {
   await ensureParentDir(filePath);
-  const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+  const tempPath = `${filePath}.${process.pid}.${Date.now()}.${randomUUID()}.tmp`;
   await writeFile(tempPath, content, "utf8");
   await rename(tempPath, filePath);
 }

@@ -7,6 +7,7 @@ import type { ChatMessage } from "./llm/types.js";
 import { parseAgentAction, type AgentAction } from "./agent-action.js";
 import { ToolRegistry } from "./tools/registry.js";
 import { BootstrapLoader } from "./bootstrap.js";
+import { RuntimeState } from "./runtime-state.js";
 
 export type AgentEvents = {
   onTaskStarted?: (task: AgentTask) => Promise<void>;
@@ -24,6 +25,7 @@ export class AgentRuntime {
     private readonly budget: BudgetTracker,
     private readonly tools: ToolRegistry,
     private readonly bootstrap: BootstrapLoader,
+    private readonly runtimeState: RuntimeState,
     private readonly maxSteps: number,
     private readonly memoryContextChars: number,
     private readonly toolOutputChars: number,
@@ -43,12 +45,32 @@ export class AgentRuntime {
   }
 
   async status(): Promise<string> {
-    return [await this.tasks.status(), await this.budget.status()].join("\n\n");
+    return [await this.runtimeState.status(), await this.tasks.status(), await this.budget.status()].join(
+      "\n\n",
+    );
   }
 
   async stop(): Promise<string> {
     const stopped = await this.tasks.stopActive();
     return stopped ? `Stopped task ${stopped.id}` : "No active task.";
+  }
+
+  async pause(reason?: string): Promise<string> {
+    return this.runtimeState.pause(reason);
+  }
+
+  async resume(): Promise<string> {
+    const message = await this.runtimeState.resume();
+    this.kick();
+    return message;
+  }
+
+  async runtimeStatus(): Promise<string> {
+    return this.runtimeState.status();
+  }
+
+  isPaused(): Promise<boolean> {
+    return this.runtimeState.isPaused();
   }
 
   private async processQueue(): Promise<void> {
@@ -58,9 +80,16 @@ export class AgentRuntime {
 
     this.running = true;
     try {
+      if (await this.runtimeState.isPaused()) {
+        return;
+      }
+
       let task = await this.tasks.next();
       while (task) {
         await this.runTask(task);
+        if (await this.runtimeState.isPaused()) {
+          return;
+        }
         task = await this.tasks.next();
       }
     } finally {

@@ -97,6 +97,13 @@ export class TaskQueue {
     return file.tasks.some((task) => task.status === "running" || task.status === "queued");
   }
 
+  async changedSince(since: string): Promise<AgentTask[]> {
+    const file = await this.read();
+    return file.tasks
+      .filter((task) => task.updatedAt > since)
+      .sort((a, b) => a.updatedAt.localeCompare(b.updatedAt));
+  }
+
   async recoverRunning(reason = "Recovered after process restart."): Promise<number> {
     return this.withLock(async () => {
       const file = await this.read();

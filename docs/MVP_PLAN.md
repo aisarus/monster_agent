@@ -71,8 +71,16 @@ The owner needs to provide:
 - `data/tasks/tasks.json` - task queue state.
 - `data/budget/usage.json` - budget usage events.
 - `data/models/cooldowns.json` - model cooldown/failure state.
+- `data/runtime/state.json` - runtime pause/resume state.
 - `WORKSPACE_ROOT` - directory the agent is allowed to operate in.
 - `docs/OPENCLAW_LESSONS.md` - local review notes from OpenClaw docs.
+
+## Operating Mode
+
+- Plain Telegram text is queued as agent work.
+- `/chat <message>` and `/ask <message>` are direct LLM replies that do not create tasks.
+- The runtime sends a plain-language activity report every `REPORT_INTERVAL_MINUTES` minutes.
+- Self-improvement can run continuously when enabled, but it skips work while runtime is paused.
 
 ## Next Engineering Steps
 

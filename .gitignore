@@ -5,6 +5,7 @@ data/memory/
 data/tasks/
 data/budget/
 data/models/
+data/runtime/
 logs/
 backups/
 *.log

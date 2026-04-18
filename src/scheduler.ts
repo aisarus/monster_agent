@@ -44,6 +44,10 @@ export class SelfImprovementScheduler {
   }
 
   async runNow(): Promise<string> {
+    if (await this.agent.isPaused()) {
+      return "Autopilot run skipped: runtime is paused.";
+    }
+
     if (await this.tasks.hasPendingWork()) {
       return "Autopilot run skipped: queue is busy.";
     }

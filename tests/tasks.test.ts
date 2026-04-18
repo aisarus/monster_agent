@@ -25,3 +25,14 @@ test("queues and marks a task", async () => {
 
   expect(await queue.status()).toContain("1 done");
 });
+
+test("lists tasks changed after a timestamp", async () => {
+  const queue = new TaskQueue(join(dir, "tasks.json"));
+  const before = new Date(Date.now() - 1000).toISOString();
+  const task = await queue.enqueue("do work");
+  await queue.mark(task.id, "completed", { result: "done" });
+
+  const changed = await queue.changedSince(before);
+
+  expect(changed.some((item) => item.id === task.id)).toBe(true);
+});

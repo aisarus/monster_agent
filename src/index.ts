@@ -1,11 +1,14 @@
 import { AgentRuntime } from "./agent.js";
 import { BootstrapLoader } from "./bootstrap.js";
 import { BudgetTracker } from "./budget.js";
+import { DirectChat } from "./chat.js";
 import { loadConfig, requireTelegramConfig } from "./config.js";
 import { Doctor } from "./doctor.js";
 import { ModelCooldowns } from "./llm/failover.js";
 import { LlmRouter } from "./llm/router.js";
 import { MemoryStore } from "./memory.js";
+import { ActivityReporter } from "./reporter.js";
+import { RuntimeState } from "./runtime-state.js";
 import { SelfImprovementScheduler } from "./scheduler.js";
 import { createTelegramBot } from "./telegram.js";
 import { TaskQueue } from "./tasks.js";
@@ -20,6 +23,7 @@ const budget = new BudgetTracker(
   config.MONTHLY_BUDGET_USD,
 );
 const tasks = new TaskQueue(config.TASKS_FILE);
+const runtimeState = new RuntimeState(config.RUNTIME_STATE_FILE);
 const cooldowns = new ModelCooldowns(config.MODEL_COOLDOWNS_FILE);
 const llm = new LlmRouter(config, budget, cooldowns);
 const tools = new ToolRegistry(new WorkspaceTools(config.WORKSPACE_ROOT));
@@ -29,6 +33,7 @@ const bootstrap = new BootstrapLoader(
   config.BOOTSTRAP_MAX_TOTAL_CHARS,
 );
 const doctor = new Doctor(config, cooldowns);
+const directChat = new DirectChat(llm);
 
 await memory.ensure();
 const recoveredTasks = await tasks.recoverRunning();
@@ -55,6 +60,7 @@ const agentRuntime = new AgentRuntime(
   budget,
   tools,
   bootstrap,
+  runtimeState,
   config.MAX_AGENT_STEPS,
   config.AGENT_MEMORY_CONTEXT_CHARS,
   config.AGENT_TOOL_OUTPUT_CHARS,
@@ -76,12 +82,21 @@ const agentRuntime = new AgentRuntime(
 );
 
 const scheduler = new SelfImprovementScheduler(config, agentRuntime, tasks, sendOwnerMessage);
+const reporter = new ActivityReporter(
+  config.REPORT_INTERVAL_MINUTES,
+  runtimeState,
+  tasks,
+  budget,
+  sendOwnerMessage,
+);
 
 const bot = createTelegramBot(
   config,
   agentRuntime,
+  directChat,
   memory,
   doctor,
+  reporter,
   () => scheduler,
 );
 
@@ -100,12 +115,13 @@ setInterval(async () => {
 }, heartbeatMs);
 
 scheduler.start();
+reporter.start();
 if (recoveredTasks > 0) {
   await sendOwnerMessage(`Recovered ${recoveredTasks} running task(s) after restart.`);
 }
 agentRuntime.kick();
 
-await bot.launch();
+await bot.launch({ dropPendingUpdates: true });
 console.log("Monster Agent started.");
 
 process.once("SIGINT", () => bot.stop("SIGINT"));

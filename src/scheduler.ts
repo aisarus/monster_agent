@@ -1,5 +1,6 @@
 import { AgentRuntime } from "./agent.js";
 import type { AppConfig } from "./config.js";
+import { LearningLogger, type RecentLearningEntry } from "./skills/LearningLogger.js";
 import { SkillEvaluator } from "./skills/SkillEvaluator.js";
 import { TaskQueue } from "./tasks.js";
 
@@ -13,6 +14,7 @@ export class SelfImprovementScheduler {
     private readonly agent: AgentRuntime,
     private readonly tasks: TaskQueue,
     private readonly skillEvaluator: SkillEvaluator,
+    private readonly learningLogger: LearningLogger,
     private readonly notify: (message: string) => Promise<void>,
   ) {
     this.enabled = config.SELF_IMPROVEMENT_ENABLED;
@@ -64,8 +66,40 @@ export class SelfImprovementScheduler {
   async buildNextTaskText(): Promise<string> {
     return (
       (await this.skillEvaluator.buildImprovementTask()) ??
+      (await this.buildRecurringErrorTask()) ??
+      (await this.buildFeatureRequestTask()) ??
       `[autopilot:self-improvement]\n${this.config.SELF_IMPROVEMENT_TASK}`
     );
+  }
+
+  private async buildRecurringErrorTask(): Promise<string | null> {
+    const errors = await this.learningLogger.readRecentEntries("errors", 20);
+    const recurring = mostFrequent(errors, 2);
+    if (!recurring) {
+      return null;
+    }
+
+    return [
+      "[autopilot:learning-error]",
+      `Разбери повторяющийся failure pattern: ${recurring.summary}`,
+      "Изучи data/learnings/ERRORS.md, найди минимальную причину и исправь один маленький gap.",
+      "Если pattern повторяемый и workflow стал понятен, создай или обнови skill.",
+    ].join("\n");
+  }
+
+  private async buildFeatureRequestTask(): Promise<string | null> {
+    const requests = await this.learningLogger.readRecentEntries("feature_requests", 10);
+    const request = requests[0];
+    if (!request) {
+      return null;
+    }
+
+    return [
+      "[autopilot:learning-feature-request]",
+      `Реализуй или уточни missing capability: ${request.summary}`,
+      "Изучи data/learnings/FEATURE_REQUESTS.md и сделай минимальный безопасный шаг.",
+      "Если scope слишком большой, добавь backlog/skill вместо широкой реализации.",
+    ].join("\n");
   }
 
   private scheduleNext(delayMs = this.config.SELF_IMPROVEMENT_INTERVAL_MINUTES * 60 * 1000): void {
@@ -98,4 +132,35 @@ export class SelfImprovementScheduler {
       }
     }
   }
+}
+
+function mostFrequent(
+  entries: RecentLearningEntry[],
+  minCount: number,
+): { summary: string; count: number } | null {
+  const counts = new Map<string, number>();
+  for (const entry of entries) {
+    const key = normalizePattern(entry.summary || entry.failureReason || "");
+    if (!key) {
+      continue;
+    }
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  const [summary, count] =
+    [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0] ?? [];
+  if (!summary || count < minCount) {
+    return null;
+  }
+  return { summary, count };
+}
+
+function normalizePattern(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/\b[0-9a-f]{8,}\b/g, "<id>")
+    .replace(/\d+/g, "<n>")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 160);
 }

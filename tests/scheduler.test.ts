@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { SelfImprovementScheduler } from "../src/scheduler.js";
+import { LearningLogger } from "../src/skills/LearningLogger.js";
 import { SkillEvaluator } from "../src/skills/SkillEvaluator.js";
 import type { AppConfig } from "../src/config.js";
 import type { AgentRuntime } from "../src/agent.js";
@@ -37,10 +38,59 @@ test("scheduler chooses underperforming skill improvement task before fallback",
     agentFixture(),
     taskQueueFixture(),
     evaluator,
+    new LearningLogger(join(dir, "learnings")),
     async () => {},
   );
 
   await expect(scheduler.buildNextTaskText()).resolves.toContain("Улучши скилл git-workflow");
+});
+
+test("scheduler chooses recurring errors before feature requests and fallback", async () => {
+  const learningLogger = new LearningLogger(join(dir, "learnings"));
+  await learningLogger.logError({
+    taskId: "task-1",
+    summary: "telegram media parsing missing",
+    failureReason: "Media parsing is not implemented.",
+  });
+  await learningLogger.logError({
+    taskId: "task-2",
+    summary: "telegram media parsing missing",
+    failureReason: "Media parsing is not implemented.",
+  });
+  await learningLogger.logFeatureRequest({
+    summary: "add voice transcription",
+    details: "Owner asked for voice input support.",
+  });
+
+  const scheduler = new SelfImprovementScheduler(
+    configFixture(),
+    agentFixture(),
+    taskQueueFixture(),
+    new SkillEvaluator(join(dir, "metrics.json")),
+    learningLogger,
+    async () => {},
+  );
+
+  await expect(scheduler.buildNextTaskText()).resolves.toContain("повторяющийся failure pattern");
+});
+
+test("scheduler chooses recent feature request when no stronger signal exists", async () => {
+  const learningLogger = new LearningLogger(join(dir, "learnings"));
+  await learningLogger.logFeatureRequest({
+    summary: "add voice transcription",
+    details: "Owner asked for voice input support.",
+  });
+
+  const scheduler = new SelfImprovementScheduler(
+    configFixture(),
+    agentFixture(),
+    taskQueueFixture(),
+    new SkillEvaluator(join(dir, "metrics.json")),
+    learningLogger,
+    async () => {},
+  );
+
+  await expect(scheduler.buildNextTaskText()).resolves.toContain("add voice transcription");
 });
 
 function configFixture(): AppConfig {
@@ -74,6 +124,7 @@ function configFixture(): AppConfig {
     TASKS_FILE: "data/tasks/tasks.json",
     BUDGET_FILE: "data/budget/usage.json",
     SKILL_METRICS_FILE: "data/skills/metrics.json",
+    LEARNINGS_DIR: "data/learnings",
     MODEL_COOLDOWNS_FILE: "data/models/cooldowns.json",
     RUNTIME_STATE_FILE: "data/runtime/state.json",
     REPORT_INTERVAL_MINUTES: 30,

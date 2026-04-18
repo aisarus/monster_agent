@@ -10,6 +10,7 @@ import { MemoryStore } from "./memory.js";
 import { ActivityReporter } from "./reporter.js";
 import { RuntimeState } from "./runtime-state.js";
 import { SelfImprovementScheduler } from "./scheduler.js";
+import { LearningLogger } from "./skills/LearningLogger.js";
 import { SkillEvaluator } from "./skills/SkillEvaluator.js";
 import { SkillLoader } from "./skills/SkillLoader.js";
 import { SkillWriter } from "./skills/SkillWriter.js";
@@ -32,6 +33,7 @@ const llm = new LlmRouter(config, budget, cooldowns);
 const skillLoader = new SkillLoader();
 const skillWriter = new SkillWriter("data/workspace/skills", skillLoader);
 const skillEvaluator = new SkillEvaluator(config.SKILL_METRICS_FILE);
+const learningLogger = new LearningLogger(config.LEARNINGS_DIR);
 const tools = new ToolRegistry(
   new WorkspaceTools(config.WORKSPACE_ROOT),
   skillLoader,
@@ -47,6 +49,7 @@ const doctor = new Doctor(config, cooldowns);
 const directChat = new DirectChat(llm);
 
 await memory.ensure();
+await learningLogger.ensureInitialized();
 const recoveredTasks = await tasks.recoverRunning();
 
 async function sendOwnerMessage(text: string): Promise<void> {
@@ -73,6 +76,7 @@ const agentRuntime = new AgentRuntime(
   bootstrap,
   skillLoader,
   skillEvaluator,
+  learningLogger,
   runtimeState,
   config.MAX_AGENT_STEPS,
   config.AGENT_MEMORY_CONTEXT_CHARS,
@@ -99,6 +103,7 @@ const scheduler = new SelfImprovementScheduler(
   agentRuntime,
   tasks,
   skillEvaluator,
+  learningLogger,
   sendOwnerMessage,
 );
 const reporter = new ActivityReporter(

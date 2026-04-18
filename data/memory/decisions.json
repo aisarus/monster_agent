@@ -39,6 +39,14 @@
       "decision": "Persist skill invocation and task outcome metrics through a SkillEvaluator and use those metrics to prioritize self-improvement tasks.",
       "reason": "The skills system needs measurable feedback so the agent can improve weak workflows instead of choosing self-improvement work blindly.",
       "result": "Added skill metrics storage, read_skill invocation tracking, task result recording for used skills, scheduler selection for underperforming/stale skills, and tests for evaluator, registry tracking, and scheduler prioritization."
+    },
+    {
+      "at": "2026-04-18T19:05:00.000Z",
+      "id": "learning-capture-layer",
+      "scope": "self-improvement",
+      "decision": "Add append-only learning, error, and feature-request logs as raw material for future self-improvement scheduling.",
+      "reason": "Skill metrics alone miss repeated failures and missing capabilities that should become future tasks or reusable skills.",
+      "result": "Added LearningLogger, seeded data/learnings markdown logs, automatic task failure capture, narrow self-improvement learning capture, and scheduler priority for recurring errors and feature requests."
     }
   ]
 }

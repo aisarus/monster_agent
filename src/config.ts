@@ -31,6 +31,7 @@ const envSchema = z.object({
   TASKS_FILE: z.string().default("data/tasks/tasks.json"),
   BUDGET_FILE: z.string().default("data/budget/usage.json"),
   SKILL_METRICS_FILE: z.string().default("data/skills/metrics.json"),
+  LEARNINGS_DIR: z.string().default("data/learnings"),
   MODEL_COOLDOWNS_FILE: z.string().default("data/models/cooldowns.json"),
   RUNTIME_STATE_FILE: z.string().default("data/runtime/state.json"),
   REPORT_INTERVAL_MINUTES: z.coerce.number().int().positive().default(30),

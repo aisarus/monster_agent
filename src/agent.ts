@@ -10,6 +10,7 @@ import { BootstrapLoader } from "./bootstrap.js";
 import { RuntimeState } from "./runtime-state.js";
 import { SkillLoader } from "./skills/SkillLoader.js";
 import { SkillEvaluator } from "./skills/SkillEvaluator.js";
+import { LearningLogger } from "./skills/LearningLogger.js";
 
 export type AgentEvents = {
   onTaskStarted?: (task: AgentTask) => Promise<void>;
@@ -29,6 +30,7 @@ export class AgentRuntime {
     private readonly bootstrap: BootstrapLoader,
     private readonly skillLoader: SkillLoader,
     private readonly skillEvaluator: SkillEvaluator,
+    private readonly learningLogger: LearningLogger,
     private readonly runtimeState: RuntimeState,
     private readonly maxSteps: number,
     private readonly memoryContextChars: number,
@@ -140,6 +142,14 @@ export class AgentRuntime {
         skillNames: [...usedSkillNames],
         success: true,
       });
+      if (isSelfImprovementTask(task.text)) {
+        await this.learningLogger.logLearning({
+          taskId: task.id,
+          summary: compactLearningSummary(result),
+          details: "Successful self-improvement task completed.",
+          relatedFiles: extractRelatedFiles(task.text, result),
+        });
+      }
       await this.events.onTaskCompleted?.(completedTask);
     } catch (error) {
       const compactError = compactTaskError(error);
@@ -152,6 +162,21 @@ export class AgentRuntime {
         success: false,
         failureReason: compactError,
       });
+      const relatedFiles = extractRelatedFiles(task.text, compactError);
+      await this.learningLogger.logError({
+        taskId: task.id,
+        summary: compactLearningSummary(task.text),
+        failureReason: compactError,
+        relatedFiles,
+      });
+      if (isMissingCapability(task.text, compactError)) {
+        await this.learningLogger.logFeatureRequest({
+          taskId: task.id,
+          summary: compactLearningSummary(task.text),
+          details: compactError,
+          relatedFiles,
+        });
+      }
       await this.events.onTaskFailed?.(failedTask);
     }
   }
@@ -371,4 +396,25 @@ function compactAssistantReply(content: string): string {
 
   const compact = lines.join("\n");
   return compact.length > 1400 ? `${compact.slice(0, 1400)}...` : compact;
+}
+
+function compactLearningSummary(content: string): string {
+  return content.replace(/\s+/g, " ").trim().slice(0, 240);
+}
+
+function isSelfImprovementTask(text: string): boolean {
+  return /\[autopilot:(self-improvement|skill-improvement|skill-review|learning-)/i.test(text);
+}
+
+function isMissingCapability(taskText: string, error: string): boolean {
+  return /(not implemented|missing capability|unsupported|не реализ|нет поддержки|не умею|не хватает)/i.test(
+    `${taskText}\n${error}`,
+  );
+}
+
+function extractRelatedFiles(...values: string[]): string[] {
+  const matches = values
+    .join("\n")
+    .match(/\b(?:src|tests|data|docs)\/[A-Za-z0-9._/-]+\b/g);
+  return [...new Set(matches ?? [])].slice(0, 8);
 }

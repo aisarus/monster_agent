@@ -7,6 +7,14 @@
       "decision": "Use a strict frontmatter plus checklist format for starter skills.",
       "reason": "The upcoming SkillLoader needs predictable metadata, eligibility requirements, and compact workflows.",
       "result": "Added git-workflow, code-review, self-improvement, and telegram-report starter skills."
+    },
+    {
+      "at": "2026-04-18T17:43:00.000Z",
+      "id": "skill-02-skill-loader",
+      "scope": "SKILL-02",
+      "decision": "Implement SkillLoader as a standalone module that validates strict SKILL.md frontmatter and skips invalid legacy skills.",
+      "reason": "The agent needs a reliable skills registry before prompt injection and read_skill tools can be added.",
+      "result": "Added SkillLoader with YAML frontmatter parsing, requirement eligibility checks, prompt XML formatting, and tests."
     }
   ]
 }

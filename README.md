@@ -17,7 +17,9 @@ Personal autonomous AI agent controlled from Telegram.
   - read files;
   - write files inside the workspace;
   - run non-system shell commands;
-  - inspect git status.
+  - inspect git status;
+  - commit safe changes;
+  - push to GitHub through `GITHUB_TOKEN`.
 - OpenClaw-inspired bootstrap workspace:
   - `data/workspace/AGENTS.md`
   - `data/workspace/SOUL.md`
@@ -48,6 +50,7 @@ cp .env.example .env
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_OWNER_ID=
 GEMINI_API_KEY=
+GITHUB_TOKEN=
 ```
 
 4. Start in development mode:
@@ -79,4 +82,4 @@ The agent must ask for confirmation before:
 - installing system packages;
 - adding new tooling to an existing project.
 
-Secrets belong in `.env`, never in git.
+Secrets belong in `.env`, never in git. `GITHUB_TOKEN` is used only for push and must not be stored in git remotes.

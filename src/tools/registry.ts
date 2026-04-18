@@ -1,6 +1,13 @@
 import { WorkspaceTools, type ToolResult } from "./workspace.js";
 
-export type AgentToolName = "list_files" | "read_file" | "write_file" | "run_command" | "git_status";
+export type AgentToolName =
+  | "list_files"
+  | "read_file"
+  | "write_file"
+  | "run_command"
+  | "git_status"
+  | "git_commit"
+  | "git_push";
 
 export type AgentToolCall = {
   tool: AgentToolName;
@@ -25,6 +32,10 @@ export class ToolRegistry {
         return this.workspace.runCommand(requiredStringArg(call.args, "command"));
       case "git_status":
         return this.workspace.gitStatus();
+      case "git_commit":
+        return this.workspace.gitCommit(requiredStringArg(call.args, "message"));
+      case "git_push":
+        return this.workspace.gitPush();
       default:
         return { ok: false, output: `Unknown tool: ${(call as { tool: string }).tool}` };
     }

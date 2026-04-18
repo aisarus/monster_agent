@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { resolve, relative, dirname } from "node:path";
 import { mkdir } from "node:fs/promises";
@@ -79,6 +80,70 @@ export class WorkspaceTools {
     return this.runCommand("git status --short");
   }
 
+  async gitCommit(message: string): Promise<ToolResult> {
+    const status = await this.execGit(["status", "--porcelain"]);
+    if (!status.ok) {
+      return status;
+    }
+
+    if (!status.output.trim()) {
+      return { ok: false, output: "No changes to commit." };
+    }
+
+    const secretCheck = await this.checkChangedFilesForSecrets(status.output);
+    if (!secretCheck.ok) {
+      return secretCheck;
+    }
+
+    const add = await this.execGit(["add", "-A"]);
+    if (!add.ok) {
+      return add;
+    }
+
+    const commit = await this.execGit(["commit", "-m", message.trim().slice(0, 160)]);
+    if (!commit.ok) {
+      return commit;
+    }
+
+    return { ok: true, output: commit.output };
+  }
+
+  async gitPush(): Promise<ToolResult> {
+    const token = process.env.GITHUB_TOKEN;
+    if (!token) {
+      return { ok: false, output: "GITHUB_TOKEN is missing in environment." };
+    }
+
+    const remote = await this.execGit(["remote", "get-url", "origin"]);
+    if (!remote.ok) {
+      return remote;
+    }
+
+    const remoteUrl = remote.output.trim();
+    const match = /^https:\/\/github\.com\/([^/\s]+)\/([^/\s]+?)(?:\.git)?$/.exec(remoteUrl);
+    if (!match) {
+      return {
+        ok: false,
+        output: "git_push supports only HTTPS GitHub origin URLs like https://github.com/owner/repo.git.",
+      };
+    }
+
+    const [, owner, repo] = match;
+    const pushUrl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`;
+    const push = await this.execGit(["push", pushUrl, "HEAD:main"], {
+      GIT_TERMINAL_PROMPT: "0",
+    });
+    if (!push.ok) {
+      return push;
+    }
+
+    await this.execGit(["fetch", "origin", "main"]);
+    return {
+      ok: true,
+      output: push.output.replaceAll(token, "[redacted]"),
+    };
+  }
+
   private resolveInside(path: string): string {
     const target = resolve(this.root, path);
     const rel = relative(this.root, target);
@@ -87,4 +152,74 @@ export class WorkspaceTools {
     }
     return target;
   }
+
+  private async execGit(args: string[], env?: NodeJS.ProcessEnv): Promise<ToolResult> {
+    try {
+      const { stdout, stderr } = await execFileAsync("git", args, {
+        cwd: this.root,
+        timeout: 120_000,
+        maxBuffer: 120_000,
+        env: { ...process.env, ...env },
+      });
+      return {
+        ok: true,
+        output: [stdout, stderr].filter(Boolean).join("\n").trim() || "(no output)",
+      };
+    } catch (error) {
+      const err = error as { stdout?: string; stderr?: string; message?: string };
+      return {
+        ok: false,
+        output: [err.stdout, err.stderr, err.message].filter(Boolean).join("\n").slice(0, 4000),
+      };
+    }
+  }
+
+  private async checkChangedFilesForSecrets(statusOutput: string): Promise<ToolResult> {
+    for (const line of statusOutput.split("\n")) {
+      const path = changedPathFromStatusLine(line);
+      if (!path) {
+        continue;
+      }
+
+      const file = this.resolveInside(path);
+      if (!existsSync(file)) {
+        continue;
+      }
+
+      const info = await stat(file);
+      if (!info.isFile() || info.size > 500_000) {
+        continue;
+      }
+
+      const content = await readFile(file, "utf8");
+      const secrets = findPotentialSecrets(content);
+      if (secrets.length > 0) {
+        return {
+          ok: false,
+          output: `Commit blocked: ${path} looks like it contains secrets.`,
+        };
+      }
+    }
+
+    return { ok: true, output: "No obvious secrets found in changed files." };
+  }
+}
+
+function changedPathFromStatusLine(line: string): string | undefined {
+  if (line.length < 4) {
+    return undefined;
+  }
+
+  const status = line.slice(0, 2);
+  if (status === " D") {
+    return undefined;
+  }
+
+  const path = line.slice(3).trim();
+  if (!path) {
+    return undefined;
+  }
+
+  const renameSeparator = " -> ";
+  return path.includes(renameSeparator) ? path.split(renameSeparator).at(-1) : path;
 }

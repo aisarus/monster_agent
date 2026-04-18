@@ -31,6 +31,26 @@ test("commits safe workspace changes", async () => {
   expect(result.output).toContain("Add notes");
 });
 
+test("creates a normalized task branch when workspace is clean", async () => {
+  const tools = new WorkspaceTools(dir);
+
+  const result = await tools.gitBranch("Agent/Add GitHub Flow!");
+  const branch = await execFileAsync("git", ["branch", "--show-current"], { cwd: dir });
+
+  expect(result.ok).toBe(true);
+  expect(branch.stdout.trim()).toBe("agent/add-github-flow");
+});
+
+test("blocks task branch creation with uncommitted changes", async () => {
+  const tools = new WorkspaceTools(dir);
+
+  await tools.writeFile("notes.txt", "dirty");
+  const result = await tools.gitBranch("agent/dirty");
+
+  expect(result.ok).toBe(false);
+  expect(result.output).toContain("uncommitted changes");
+});
+
 test("blocks commits when changed files look like secrets", async () => {
   const tools = new WorkspaceTools(dir);
   const fakeSecret = `sk-proj-${"a".repeat(32)}`;

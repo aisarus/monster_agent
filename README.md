@@ -18,8 +18,9 @@ Personal autonomous AI agent controlled from Telegram.
   - write files inside the workspace;
   - run non-system shell commands;
   - inspect git status;
+  - create task branches;
   - commit safe changes;
-  - push to GitHub through `GITHUB_TOKEN`.
+  - push the current branch to GitHub through `GITHUB_TOKEN`.
 - OpenClaw-inspired bootstrap workspace:
   - `data/workspace/AGENTS.md`
   - `data/workspace/SOUL.md`
@@ -28,7 +29,7 @@ Personal autonomous AI agent controlled from Telegram.
   - `data/workspace/HEARTBEAT.md`
   - `data/workspace/MEMORY.md`
   - `data/workspace/skills/*/SKILL.md`
-- Git-oriented workflow planned for future tasks: branch, secret scan, commit, push.
+- Git-oriented workflow: create a task branch, run checks, secret-scan changed files, commit, push.
 
 ## Setup
 

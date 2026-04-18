@@ -6,6 +6,7 @@ export type AgentToolName =
   | "write_file"
   | "run_command"
   | "git_status"
+  | "git_branch"
   | "git_commit"
   | "git_push";
 
@@ -32,6 +33,8 @@ export class ToolRegistry {
         return this.workspace.runCommand(requiredStringArg(call.args, "command"));
       case "git_status":
         return this.workspace.gitStatus();
+      case "git_branch":
+        return this.workspace.gitBranch(requiredStringArg(call.args, "name"));
       case "git_commit":
         return this.workspace.gitCommit(requiredStringArg(call.args, "message"));
       case "git_push":

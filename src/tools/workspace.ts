@@ -80,6 +80,32 @@ export class WorkspaceTools {
     return this.runCommand("git status --short");
   }
 
+  async gitBranch(name: string): Promise<ToolResult> {
+    const status = await this.execGit(["status", "--porcelain"]);
+    if (!status.ok) {
+      return status;
+    }
+
+    if (status.output.trim()) {
+      return {
+        ok: false,
+        output: "Cannot create a task branch while the workspace has uncommitted changes.",
+      };
+    }
+
+    const branch = normalizeBranchName(name);
+    if (!branch) {
+      return { ok: false, output: "Branch name is empty after normalization." };
+    }
+
+    const checkout = await this.execGit(["checkout", "-B", branch]);
+    if (!checkout.ok) {
+      return checkout;
+    }
+
+    return { ok: true, output: `Switched to branch ${branch}` };
+  }
+
   async gitCommit(message: string): Promise<ToolResult> {
     const status = await this.execGit(["status", "--porcelain"]);
     if (!status.ok) {
@@ -128,16 +154,21 @@ export class WorkspaceTools {
       };
     }
 
+    const branch = await this.currentBranch();
+    if (!branch.ok) {
+      return branch;
+    }
+
     const [, owner, repo] = match;
     const pushUrl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`;
-    const push = await this.execGit(["push", pushUrl, "HEAD:main"], {
+    const push = await this.execGit(["push", pushUrl, `HEAD:${branch.output.trim()}`], {
       GIT_TERMINAL_PROMPT: "0",
     });
     if (!push.ok) {
       return push;
     }
 
-    await this.execGit(["fetch", "origin", "main"]);
+    await this.execGit(["fetch", "origin", branch.output.trim()]);
     return {
       ok: true,
       output: push.output.replaceAll(token, "[redacted]"),
@@ -174,6 +205,20 @@ export class WorkspaceTools {
     }
   }
 
+  private async currentBranch(): Promise<ToolResult> {
+    const branch = await this.execGit(["branch", "--show-current"]);
+    if (!branch.ok) {
+      return branch;
+    }
+
+    const name = branch.output.trim();
+    if (!name) {
+      return { ok: false, output: "Cannot push from detached HEAD." };
+    }
+
+    return { ok: true, output: name };
+  }
+
   private async checkChangedFilesForSecrets(statusOutput: string): Promise<ToolResult> {
     for (const line of statusOutput.split("\n")) {
       const path = changedPathFromStatusLine(line);
@@ -203,6 +248,17 @@ export class WorkspaceTools {
 
     return { ok: true, output: "No obvious secrets found in changed files." };
   }
+}
+
+function normalizeBranchName(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._/-]+/g, "-")
+    .replace(/\/+/g, "/")
+    .replace(/-+/g, "-")
+    .replace(/^[/.:-]+|[/.:-]+$/g, "")
+    .slice(0, 80);
 }
 
 function changedPathFromStatusLine(line: string): string | undefined {

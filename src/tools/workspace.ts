@@ -140,18 +140,9 @@ export class WorkspaceTools {
       return { ok: false, output: "GITHUB_TOKEN is missing in environment." };
     }
 
-    const remote = await this.execGit(["remote", "get-url", "origin"]);
-    if (!remote.ok) {
-      return remote;
-    }
-
-    const remoteUrl = remote.output.trim();
-    const match = /^https:\/\/github\.com\/([^/\s]+)\/([^/\s]+?)(?:\.git)?$/.exec(remoteUrl);
-    if (!match) {
-      return {
-        ok: false,
-        output: "git_push supports only HTTPS GitHub origin URLs like https://github.com/owner/repo.git.",
-      };
+    const repo = await this.githubRepo();
+    if (!repo.ok) {
+      return repo;
     }
 
     const branch = await this.currentBranch();
@@ -159,8 +150,7 @@ export class WorkspaceTools {
       return branch;
     }
 
-    const [, owner, repo] = match;
-    const pushUrl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`;
+    const pushUrl = `https://x-access-token:${token}@github.com/${repo.owner}/${repo.name}.git`;
     const push = await this.execGit(["push", pushUrl, `HEAD:${branch.output.trim()}`], {
       GIT_TERMINAL_PROMPT: "0",
     });
@@ -173,6 +163,55 @@ export class WorkspaceTools {
       ok: true,
       output: push.output.replaceAll(token, "[redacted]"),
     };
+  }
+
+  async githubPr(title: string, body: string, base = "main"): Promise<ToolResult> {
+    const token = process.env.GITHUB_TOKEN;
+    if (!token) {
+      return { ok: false, output: "GITHUB_TOKEN is missing in environment." };
+    }
+
+    const repo = await this.githubRepo();
+    if (!repo.ok) {
+      return repo;
+    }
+
+    const branch = await this.currentBranch();
+    if (!branch.ok) {
+      return branch;
+    }
+
+    const head = branch.output.trim();
+    if (head === base) {
+      return { ok: false, output: "Refusing to open a PR from the base branch." };
+    }
+
+    const response = await fetch(`https://api.github.com/repos/${repo.owner}/${repo.name}/pulls`, {
+      method: "POST",
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "User-Agent": "monster-agent",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+      body: JSON.stringify({
+        base,
+        body,
+        head,
+        title,
+      }),
+    });
+
+    const payload = (await response.json()) as { html_url?: string; message?: string };
+    if (!response.ok) {
+      return {
+        ok: false,
+        output: `GitHub PR failed: ${response.status} ${payload.message ?? response.statusText}`,
+      };
+    }
+
+    return { ok: true, output: payload.html_url ?? "PR created." };
   }
 
   private resolveInside(path: string): string {
@@ -217,6 +256,24 @@ export class WorkspaceTools {
     }
 
     return { ok: true, output: name };
+  }
+
+  private async githubRepo(): Promise<ToolResult & { owner?: string; name?: string }> {
+    const remote = await this.execGit(["remote", "get-url", "origin"]);
+    if (!remote.ok) {
+      return remote;
+    }
+
+    const remoteUrl = remote.output.trim();
+    const match = /^https:\/\/github\.com\/([^/\s]+)\/([^/\s]+?)(?:\.git)?$/.exec(remoteUrl);
+    if (!match) {
+      return {
+        ok: false,
+        output: "GitHub tools support only HTTPS GitHub origin URLs like https://github.com/owner/repo.git.",
+      };
+    }
+
+    return { ok: true, output: remoteUrl, owner: match[1], name: match[2] };
   }
 
   private async checkChangedFilesForSecrets(statusOutput: string): Promise<ToolResult> {

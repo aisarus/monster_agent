@@ -1,8 +1,10 @@
 import { WorkspaceTools, type ToolResult } from "./workspace.js";
+import { SkillLoader } from "../skills/SkillLoader.js";
 
 export type AgentToolName =
   | "list_files"
   | "read_file"
+  | "read_skill"
   | "write_file"
   | "run_command"
   | "git_status"
@@ -17,7 +19,10 @@ export type AgentToolCall = {
 };
 
 export class ToolRegistry {
-  constructor(private readonly workspace: WorkspaceTools) {}
+  constructor(
+    private readonly workspace: WorkspaceTools,
+    private readonly skillLoader: SkillLoader,
+  ) {}
 
   async run(call: AgentToolCall): Promise<ToolResult> {
     switch (call.tool) {
@@ -25,6 +30,8 @@ export class ToolRegistry {
         return this.workspace.listFiles(stringArg(call.args, "path", "."));
       case "read_file":
         return this.workspace.readFile(requiredStringArg(call.args, "path"));
+      case "read_skill":
+        return this.readSkill(requiredStringArg(call.args, "name"));
       case "write_file":
         return this.workspace.writeFile(
           requiredStringArg(call.args, "path"),
@@ -49,6 +56,22 @@ export class ToolRegistry {
       default:
         return { ok: false, output: `Unknown tool: ${(call as { tool: string }).tool}` };
     }
+  }
+
+  private async readSkill(name: string): Promise<ToolResult> {
+    const skill = await this.skillLoader.getSkill(name);
+    if (!skill) {
+      return { ok: false, output: `Skill not found: ${name}` };
+    }
+
+    if (!skill.eligible) {
+      return {
+        ok: false,
+        output: `Skill is not eligible: ${name}. Missing: ${skill.missingRequirements.join(", ")}`,
+      };
+    }
+
+    return { ok: true, output: skill.content };
   }
 }
 

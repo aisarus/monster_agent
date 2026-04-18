@@ -10,6 +10,7 @@ import { MemoryStore } from "./memory.js";
 import { ActivityReporter } from "./reporter.js";
 import { RuntimeState } from "./runtime-state.js";
 import { SelfImprovementScheduler } from "./scheduler.js";
+import { SkillLoader } from "./skills/SkillLoader.js";
 import { createTelegramBot } from "./telegram.js";
 import { TaskQueue } from "./tasks.js";
 import { ToolRegistry } from "./tools/registry.js";
@@ -26,7 +27,8 @@ const tasks = new TaskQueue(config.TASKS_FILE);
 const runtimeState = new RuntimeState(config.RUNTIME_STATE_FILE);
 const cooldowns = new ModelCooldowns(config.MODEL_COOLDOWNS_FILE);
 const llm = new LlmRouter(config, budget, cooldowns);
-const tools = new ToolRegistry(new WorkspaceTools(config.WORKSPACE_ROOT));
+const skillLoader = new SkillLoader();
+const tools = new ToolRegistry(new WorkspaceTools(config.WORKSPACE_ROOT), skillLoader);
 const bootstrap = new BootstrapLoader(
   config.BOOTSTRAP_DIR,
   config.BOOTSTRAP_MAX_FILE_CHARS,
@@ -60,6 +62,7 @@ const agentRuntime = new AgentRuntime(
   budget,
   tools,
   bootstrap,
+  skillLoader,
   runtimeState,
   config.MAX_AGENT_STEPS,
   config.AGENT_MEMORY_CONTEXT_CHARS,

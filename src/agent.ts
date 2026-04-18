@@ -8,6 +8,7 @@ import { parseAgentAction, type AgentAction } from "./agent-action.js";
 import { ToolRegistry } from "./tools/registry.js";
 import { BootstrapLoader } from "./bootstrap.js";
 import { RuntimeState } from "./runtime-state.js";
+import { SkillLoader } from "./skills/SkillLoader.js";
 
 export type AgentEvents = {
   onTaskStarted?: (task: AgentTask) => Promise<void>;
@@ -25,6 +26,7 @@ export class AgentRuntime {
     private readonly budget: BudgetTracker,
     private readonly tools: ToolRegistry,
     private readonly bootstrap: BootstrapLoader,
+    private readonly skillLoader: SkillLoader,
     private readonly runtimeState: RuntimeState,
     private readonly maxSteps: number,
     private readonly memoryContextChars: number,
@@ -104,6 +106,7 @@ export class AgentRuntime {
     try {
       const memory = await this.memory.read();
       const bootstrap = await this.bootstrap.load(task.text);
+      const skills = await this.skillLoader.loadEligible();
       const roles = selectRoles(task.text);
       const roleBrief = roles.map((role) => `- ${role}: ${roleDescriptions[role]}`).join("\n");
       const messages: ChatMessage[] = [
@@ -113,24 +116,15 @@ export class AgentRuntime {
         },
         {
           role: "user",
-            content: [
-              "Bootstrap context:",
-            bootstrap.text,
-            "",
-            "Long-term memory:",
-            memory.slice(0, this.memoryContextChars),
-            "",
-            "Selected internal roles:",
+          content: buildTaskUserPrompt({
+            bootstrapText: bootstrap.text,
             roleBrief,
-            "",
-              "Task:",
-              task.text,
-              "",
-              taskRequiresInspection(task.text)
-                ? "Instruction: this task explicitly asks to inspect/read/check files. You must call list_files or read_file before final."
-                : "",
-            ].join("\n"),
-          },
+            memory,
+            memoryContextChars: this.memoryContextChars,
+            skillsPrompt: buildAvailableSkillsPrompt(this.skillLoader.formatForPrompt(skills)),
+            taskText: task.text,
+          }),
+        },
       ];
 
       const result = await this.runAgentLoop(task.id, messages);
@@ -261,6 +255,7 @@ function buildSystemPrompt(): string {
     "Action schema:",
     '{"type":"tool","call":{"tool":"list_files","args":{"path":"."}}}',
     '{"type":"tool","call":{"tool":"read_file","args":{"path":"README.md"}}}',
+    '{"type":"tool","call":{"tool":"read_skill","args":{"name":"git-workflow"}}}',
     '{"type":"tool","call":{"tool":"write_file","args":{"path":"notes.txt","content":"text"}}}',
     '{"type":"tool","call":{"tool":"run_command","args":{"command":"npm test"}}}',
     '{"type":"tool","call":{"tool":"git_status","args":{}}}',
@@ -269,8 +264,9 @@ function buildSystemPrompt(): string {
     '{"type":"tool","call":{"tool":"git_push","args":{}}}',
     '{"type":"tool","call":{"tool":"github_pr","args":{"title":"Short PR title","body":"What changed and checks run","base":"main"}}}',
     '{"type":"final","message":"short final answer for owner"}',
-    "Available tools: list_files, read_file, write_file, run_command, git_status, git_branch, git_commit, git_push, github_pr.",
+    "Available tools: list_files, read_file, read_skill, write_file, run_command, git_status, git_branch, git_commit, git_push, github_pr.",
     "Use tools for real work. Do not pretend to inspect or change files without tools.",
+    "When a task matches an available skill description, call read_skill before starting the workflow.",
     "For casual chat, use final immediately.",
     "For code tasks, inspect files first, edit, run checks, then final.",
     "Before non-trivial code changes, create a task branch with git_branch when the workspace is clean.",
@@ -281,6 +277,46 @@ function buildSystemPrompt(): string {
     "When recommending the next engineering step, name the exact file/module to change.",
     "System-level commands are blocked by policy and require owner confirmation.",
     "Do not write secrets to files. Do not spend money. Do not message external people.",
+  ].join("\n");
+}
+
+export function buildTaskUserPrompt(args: {
+  bootstrapText: string;
+  skillsPrompt: string;
+  memory: string;
+  memoryContextChars: number;
+  roleBrief: string;
+  taskText: string;
+}): string {
+  return [
+    "Bootstrap context:",
+    args.bootstrapText,
+    "",
+    args.skillsPrompt,
+    "",
+    "Long-term memory:",
+    args.memory.slice(0, args.memoryContextChars),
+    "",
+    "Selected internal roles:",
+    args.roleBrief,
+    "",
+    "Task:",
+    args.taskText,
+    "",
+    taskRequiresInspection(args.taskText)
+      ? "Instruction: this task explicitly asks to inspect/read/check files. You must call list_files or read_file before final."
+      : "",
+  ].join("\n");
+}
+
+function buildAvailableSkillsPrompt(skillsXml: string): string {
+  return [
+    "## Available Skills",
+    "",
+    skillsXml,
+    "",
+    "When you need to perform a task matching a skill description,",
+    "read the full SKILL.md before starting. Skills contain the exact workflow.",
   ].join("\n");
 }
 

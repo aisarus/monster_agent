@@ -15,6 +15,14 @@
       "decision": "Implement SkillLoader as a standalone module that validates strict SKILL.md frontmatter and skips invalid legacy skills.",
       "reason": "The agent needs a reliable skills registry before prompt injection and read_skill tools can be added.",
       "result": "Added SkillLoader with YAML frontmatter parsing, requirement eligibility checks, prompt XML formatting, and tests."
+    },
+    {
+      "at": "2026-04-18T17:49:00.000Z",
+      "id": "skill-03-prompt-injection-read-skill",
+      "scope": "SKILL-03",
+      "decision": "Inject eligible skills into the task prompt and expose read_skill as an agent tool.",
+      "reason": "The agent must see available workflows compactly, then read the full SKILL.md only when a task matches a skill.",
+      "result": "Added prompt assembly for Available Skills, read_skill tool dispatch, runtime SkillLoader wiring, and tests for prompt injection plus tool output."
     }
   ]
 }

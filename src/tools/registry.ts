@@ -8,7 +8,8 @@ export type AgentToolName =
   | "git_status"
   | "git_branch"
   | "git_commit"
-  | "git_push";
+  | "git_push"
+  | "github_pr";
 
 export type AgentToolCall = {
   tool: AgentToolName;
@@ -39,6 +40,12 @@ export class ToolRegistry {
         return this.workspace.gitCommit(requiredStringArg(call.args, "message"));
       case "git_push":
         return this.workspace.gitPush();
+      case "github_pr":
+        return this.workspace.githubPr(
+          requiredStringArg(call.args, "title"),
+          stringArg(call.args, "body", ""),
+          stringArg(call.args, "base", "main"),
+        );
       default:
         return { ok: false, output: `Unknown tool: ${(call as { tool: string }).tool}` };
     }

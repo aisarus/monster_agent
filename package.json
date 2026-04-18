@@ -1,0 +1,39 @@
+{
+  "name": "monster-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Personal autonomous agent controlled from Telegram.",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "telegram:updates": "tsx src/tools/telegram-updates.ts",
+    "gemini:models": "tsx src/tools/gemini-models.ts",
+    "gemini:smoke": "tsx src/tools/gemini-smoke.ts",
+    "groq:smoke": "tsx src/tools/groq-smoke.ts",
+    "ollama:smoke": "tsx src/tools/ollama-smoke.ts",
+    "agent:smoke": "tsx src/tools/agent-smoke.ts"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "dotenv": "^16.4.7",
+    "openai": "^4.77.0",
+    "telegraf": "^4.16.3",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/node": "^22.10.2",
+    "eslint": "^9.17.0",
+    "prettier": "^3.4.2",
+    "tsx": "^4.19.2",
+    "typescript-eslint": "^8.18.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+data/memory/
+data/tasks/
+data/budget/
+data/models/
+logs/
+backups/
+*.log

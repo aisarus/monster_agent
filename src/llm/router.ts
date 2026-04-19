@@ -42,6 +42,11 @@ export class LlmRouter {
       return;
     }
 
+    if (config.DEFAULT_PROVIDER === "groq") {
+      this.providers = [groq, ...geminiProviders, openai, ollama];
+      return;
+    }
+
     if (config.DEFAULT_PROVIDER === "local") {
       this.providers = [ollama, groq, ...geminiProviders, openai];
       return;

@@ -80,9 +80,8 @@ npm run dev
 - Any other text message becomes a task.
 
 The agent sends an activity report every `REPORT_INTERVAL_MINUTES` minutes. Direct chat replies do not
-pause the queue or autopilot.
-Direct chat uses `DIRECT_CHAT_PROVIDER` so `/chat` can prefer Gemini while autonomous coding tasks
-use `DEFAULT_PROVIDER`.
+pause the queue or autopilot. Direct chat uses `DIRECT_CHAT_PROVIDER` so `/chat` can prefer a fast
+cloud model such as Groq while autonomous coding tasks use `DEFAULT_PROVIDER`.
 
 ## Dashboard
 

@@ -23,6 +23,7 @@ export class OllamaProvider implements LlmProvider {
     const response = await fetch(`${this.baseUrl.replace(/\/$/, "")}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(30_000),
       body: JSON.stringify({
         model: this.model,
         messages: request.messages,

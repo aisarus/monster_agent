@@ -125,6 +125,9 @@ test("scheduler runs Codex executor instead of queueing an agent task when confi
       status() {
         return "Codex runner: idle";
       },
+      async recentlyNooped() {
+        return false;
+      },
       async run(taskText: string) {
         calls.push(taskText);
         return "Codex run started.";
@@ -136,6 +139,31 @@ test("scheduler runs Codex executor instead of queueing an agent task when confi
   expect(calls).toHaveLength(1);
   expect(calls[0]).toContain("[autopilot:self-improvement]");
 });
+
+test("scheduler skips a Codex task that recently produced no changes", async () => {
+  const scheduler = new SelfImprovementScheduler(
+    configFixture(),
+    agentFixture(),
+    taskQueueFixture(),
+    new SkillEvaluator(join(dir, "metrics.json")),
+    new LearningLogger(join(dir, "learnings")),
+    async () => {},
+    {
+      status() {
+        return "Codex runner: idle";
+      },
+      async recentlyNooped() {
+        return true;
+      },
+      async run() {
+        throw new Error("should not run");
+      },
+    } as never,
+  );
+
+  await expect(scheduler.runNow()).resolves.toContain("recently made no changes");
+});
+
 
 function configFixture(): AppConfig {
   return {
@@ -181,6 +209,7 @@ function configFixture(): AppConfig {
     CODEX_MODEL: undefined,
     CODEX_TIMEOUT_MINUTES: 30,
     CODEX_PROGRESS_INTERVAL_MINUTES: 5,
+    CODEX_NOOP_COOLDOWN_MINUTES: 240,
     REPORT_INTERVAL_MINUTES: 30,
     SELF_IMPROVEMENT_ENABLED: false,
     SELF_IMPROVEMENT_INTERVAL_MINUTES: 60,

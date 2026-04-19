@@ -62,6 +62,9 @@ export class SelfImprovementScheduler {
 
     const taskText = await this.buildNextTaskText();
     if (this.codexRunner) {
+      if (await this.codexRunner.recentlyNooped(taskText)) {
+        return "Autopilot skipped: Codex recently made no changes for this task.";
+      }
       const message = await this.codexRunner.run(taskText);
       this.lastRunAt = new Date().toISOString();
       return message;

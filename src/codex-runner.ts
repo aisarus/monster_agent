@@ -4,6 +4,7 @@ import { mkdir, readFile, stat } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { promisify } from "node:util";
 import type { AppConfig } from "./config.js";
+import { readJsonFile, writeJsonFile } from "./storage/fs.js";
 import { findPotentialSecrets } from "./tools/safety.js";
 
 const execFileAsync = promisify(execFile);
@@ -18,6 +19,12 @@ type ExecFn = (
   args: string[],
   options: { cwd: string; timeout: number; maxBuffer: number; env?: NodeJS.ProcessEnv },
 ) => Promise<ExecResult>;
+
+type NoopFile = {
+  entries: Record<string, { taskKey: string; taskText: string; at: string; summary: string }>;
+};
+
+const emptyNoopFile: NoopFile = { entries: {} };
 
 export class CodexRunner {
   private running = false;
@@ -54,6 +61,16 @@ export class CodexRunner {
     });
 
     return "Codex run started.";
+  }
+
+  async recentlyNooped(taskText: string): Promise<boolean> {
+    const entry = (await this.readNoops()).entries[taskKey(taskText)];
+    if (!entry) {
+      return false;
+    }
+
+    const ageMs = Date.now() - Date.parse(entry.at);
+    return Number.isFinite(ageMs) && ageMs < this.config.CODEX_NOOP_COOLDOWN_MINUTES * 60 * 1000;
   }
 
   private async execute(taskText: string): Promise<void> {
@@ -93,6 +110,7 @@ export class CodexRunner {
 
       const status = await this.git(["status", "--porcelain"]);
       if (!status.trim()) {
+        await this.recordNoop(taskText, summary);
         await this.notify(["Codex finished: no changes.", compact(summary, 1200)].join("\n"));
         return;
       }
@@ -184,6 +202,26 @@ export class CodexRunner {
     );
   }
 
+  private async recordNoop(taskText: string, summary: string): Promise<void> {
+    const file = await this.readNoops();
+    const key = taskKey(taskText);
+    file.entries[key] = {
+      taskKey: key,
+      taskText: compact(taskText, 1000),
+      at: new Date().toISOString(),
+      summary: compact(summary, 1000),
+    };
+    await writeJsonFile(this.noopPath(), file);
+  }
+
+  private readNoops(): Promise<NoopFile> {
+    return readJsonFile(this.noopPath(), emptyNoopFile);
+  }
+
+  private noopPath(): string {
+    return resolve(this.config.WORKSPACE_ROOT, "data/runtime/codex-noop.json");
+  }
+
   private async checkChangedFilesForSecrets(
     statusOutput: string,
   ): Promise<{ ok: true } | { ok: false; reason: string }> {
@@ -270,6 +308,15 @@ function buildCodexPrompt(taskText: string): string {
 
 function compactTask(text: string): string {
   return compact(text.replace(/\s+/g, " ").trim(), 700);
+}
+
+function taskKey(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/\d+(?:\.\d+)?/g, "<n>")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 240);
 }
 
 function compact(text: string, maxLength: number): string {

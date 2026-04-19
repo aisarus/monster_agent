@@ -86,6 +86,8 @@ When `CODEX_AUTOMATION_ENABLED=true`, autopilot self-improvement runs `codex exe
 then the daemon runs checks, commits safe changes, pushes to GitHub, and sends a short Telegram report.
 Long Codex runs send progress pings every `CODEX_PROGRESS_INTERVAL_MINUTES` minutes and report timeout
 after `CODEX_TIMEOUT_MINUTES`.
+If Codex returns no file changes for a task, the daemon cools that task down for
+`CODEX_NOOP_COOLDOWN_MINUTES` minutes instead of repeating it immediately.
 
 ## Dashboard
 

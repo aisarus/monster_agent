@@ -1,5 +1,6 @@
 import { AgentRuntime } from "./agent.js";
 import type { AppConfig } from "./config.js";
+import { CodexRunner } from "./codex-runner.js";
 import { LearningLogger, type RecentLearningEntry } from "./skills/LearningLogger.js";
 import { SkillEvaluator } from "./skills/SkillEvaluator.js";
 import { TaskQueue } from "./tasks.js";
@@ -16,6 +17,7 @@ export class SelfImprovementScheduler {
     private readonly skillEvaluator: SkillEvaluator,
     private readonly learningLogger: LearningLogger,
     private readonly notify: (message: string) => Promise<void>,
+    private readonly codexRunner?: CodexRunner,
   ) {
     this.enabled = config.SELF_IMPROVEMENT_ENABLED;
   }
@@ -42,8 +44,10 @@ export class SelfImprovementScheduler {
   status(): string {
     return [
       `Autopilot: ${this.enabled ? "enabled" : "disabled"}`,
+      `Executor: ${this.codexRunner ? "codex" : "agent-loop"}`,
       `Interval: ${this.config.SELF_IMPROVEMENT_INTERVAL_MINUTES} min`,
       `Last run: ${this.lastRunAt ?? "never"}`,
+      this.codexRunner?.status() ?? "",
     ].join("\n");
   }
 
@@ -57,6 +61,12 @@ export class SelfImprovementScheduler {
     }
 
     const taskText = await this.buildNextTaskText();
+    if (this.codexRunner) {
+      const message = await this.codexRunner.run(taskText);
+      this.lastRunAt = new Date().toISOString();
+      return message;
+    }
+
     const task = await this.agent.enqueue(taskText);
     this.agent.kick();
     this.lastRunAt = new Date().toISOString();

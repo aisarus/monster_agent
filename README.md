@@ -82,6 +82,8 @@ npm run dev
 The agent sends an activity report every `REPORT_INTERVAL_MINUTES` minutes. Direct chat replies do not
 pause the queue or autopilot. Direct chat uses `DIRECT_CHAT_PROVIDER` so `/chat` can prefer a fast
 cloud model such as Groq while autonomous coding tasks use `DEFAULT_PROVIDER`.
+When `CODEX_AUTOMATION_ENABLED=true`, autopilot self-improvement runs `codex exec` in this repo,
+then the daemon runs checks, commits safe changes, pushes to GitHub, and sends a short Telegram report.
 
 ## Dashboard
 

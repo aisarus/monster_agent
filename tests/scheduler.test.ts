@@ -112,6 +112,31 @@ test("scheduled autopilot tick stays quiet while runtime is paused", async () =>
   expect(messages).toHaveLength(0);
 });
 
+test("scheduler runs Codex executor instead of queueing an agent task when configured", async () => {
+  const calls: string[] = [];
+  const scheduler = new SelfImprovementScheduler(
+    configFixture(),
+    agentFixture(),
+    taskQueueFixture(),
+    new SkillEvaluator(join(dir, "metrics.json")),
+    new LearningLogger(join(dir, "learnings")),
+    async () => {},
+    {
+      status() {
+        return "Codex runner: idle";
+      },
+      async run(taskText: string) {
+        calls.push(taskText);
+        return "Codex run started.";
+      },
+    } as never,
+  );
+
+  await expect(scheduler.runNow()).resolves.toBe("Codex run started.");
+  expect(calls).toHaveLength(1);
+  expect(calls[0]).toContain("[autopilot:self-improvement]");
+});
+
 function configFixture(): AppConfig {
   return {
     TELEGRAM_BOT_TOKEN: "token",
@@ -151,6 +176,10 @@ function configFixture(): AppConfig {
     DASHBOARD_HOST: "127.0.0.1",
     DASHBOARD_PORT: 8787,
     DASHBOARD_TOKEN: undefined,
+    DASHBOARD_PUBLIC_URL: undefined,
+    CODEX_AUTOMATION_ENABLED: true,
+    CODEX_MODEL: undefined,
+    CODEX_TIMEOUT_MINUTES: 30,
     REPORT_INTERVAL_MINUTES: 30,
     SELF_IMPROVEMENT_ENABLED: false,
     SELF_IMPROVEMENT_INTERVAL_MINUTES: 60,

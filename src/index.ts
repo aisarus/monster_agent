@@ -2,6 +2,7 @@ import { AgentRuntime } from "./agent.js";
 import { BootstrapLoader } from "./bootstrap.js";
 import { BudgetTracker } from "./budget.js";
 import { DirectChat } from "./chat.js";
+import { CodexRunner } from "./codex-runner.js";
 import { loadConfig, requireTelegramConfig } from "./config.js";
 import { startDashboardServer } from "./dashboard.js";
 import { Doctor } from "./doctor.js";
@@ -110,6 +111,7 @@ const scheduler = new SelfImprovementScheduler(
   skillEvaluator,
   learningLogger,
   sendOwnerMessage,
+  config.CODEX_AUTOMATION_ENABLED ? new CodexRunner(config, sendOwnerMessage) : undefined,
 );
 const reporter = new ActivityReporter(
   config.REPORT_INTERVAL_MINUTES,

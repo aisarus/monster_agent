@@ -1,3 +1,16 @@
 {
-  "skills": {}
+  "skills": {
+    "git-workflow": {
+      "invocations": 2,
+      "successes": 0,
+      "failures": 0,
+      "task_success_rate": 0,
+      "avg_steps_saved": 0,
+      "failure_reasons": [],
+      "version_started_at": "2026-04-19T08:45:50.418Z",
+      "version_history": [],
+      "current_version": "1.0.0",
+      "last_used": "2026-04-19T08:49:21.999Z"
+    }
+  }
 }

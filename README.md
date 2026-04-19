@@ -82,6 +82,28 @@ npm run dev
 The agent sends an activity report every `REPORT_INTERVAL_MINUTES` minutes. Direct chat replies do not
 pause the queue or autopilot.
 
+## Dashboard
+
+The daemon also serves a local operator dashboard when `DASHBOARD_ENABLED=true`.
+
+Default URL:
+
+```bash
+http://127.0.0.1:8787
+```
+
+Dashboard settings:
+
+```bash
+DASHBOARD_ENABLED=true
+DASHBOARD_HOST=127.0.0.1
+DASHBOARD_PORT=8787
+DASHBOARD_TOKEN=
+```
+
+Keep `DASHBOARD_HOST=127.0.0.1` for server use unless a reverse proxy or firewall is configured.
+Set `DASHBOARD_TOKEN` when exposing the dashboard beyond a local SSH tunnel.
+
 ## Safety Rules
 
 The agent must ask for confirmation before:

@@ -3,6 +3,7 @@ import { BootstrapLoader } from "./bootstrap.js";
 import { BudgetTracker } from "./budget.js";
 import { DirectChat } from "./chat.js";
 import { loadConfig, requireTelegramConfig } from "./config.js";
+import { startDashboardServer } from "./dashboard.js";
 import { Doctor } from "./doctor.js";
 import { ModelCooldowns } from "./llm/failover.js";
 import { LlmRouter } from "./llm/router.js";
@@ -125,6 +126,16 @@ const bot = createTelegramBot(
 );
 
 requireTelegramConfig(config);
+
+if (config.DASHBOARD_ENABLED) {
+  startDashboardServer({
+    config,
+    agent: agentRuntime,
+    scheduler,
+    skillLoader,
+    skillEvaluator,
+  });
+}
 
 const heartbeatMs = config.HEARTBEAT_MINUTES * 60 * 1000;
 setInterval(async () => {

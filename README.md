@@ -84,10 +84,14 @@ pause the queue or autopilot. Direct chat uses `DIRECT_CHAT_PROVIDER` so `/chat`
 cloud model such as Groq while autonomous coding tasks use `DEFAULT_PROVIDER`.
 When `CODEX_AUTOMATION_ENABLED=true`, autopilot self-improvement runs `codex exec` in this repo,
 then the daemon runs checks, commits safe changes, pushes to GitHub, and sends a short Telegram report.
+The scheduler prefers concrete signals in order: underperforming skills, recurring errors, recent feature
+requests, then a self-discovery task where Codex inspects repository state and chooses one small safe
+improvement itself.
 Long Codex runs send progress pings every `CODEX_PROGRESS_INTERVAL_MINUTES` minutes and report timeout
 after `CODEX_TIMEOUT_MINUTES`.
 If Codex returns no file changes for a task, the daemon cools that task down for
-`CODEX_NOOP_COOLDOWN_MINUTES` minutes instead of repeating it immediately.
+`CODEX_NOOP_COOLDOWN_MINUTES` minutes and tries the next available self-improvement signal instead of
+repeating it immediately.
 
 ## Dashboard
 

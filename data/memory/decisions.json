@@ -47,6 +47,14 @@
       "decision": "Add append-only learning, error, and feature-request logs as raw material for future self-improvement scheduling.",
       "reason": "Skill metrics alone miss repeated failures and missing capabilities that should become future tasks or reusable skills.",
       "result": "Added LearningLogger, seeded data/learnings markdown logs, automatic task failure capture, narrow self-improvement learning capture, and scheduler priority for recurring errors and feature requests."
+    },
+    {
+      "at": "2026-04-19T13:05:00.000Z",
+      "id": "codex-autopilot-self-discovery",
+      "scope": "self-improvement",
+      "decision": "Let the Codex autopilot consider multiple concrete self-improvement signals before falling back to a repository self-discovery task.",
+      "reason": "A single highest-priority signal can repeatedly produce no changes, which makes the daemon look stuck instead of choosing the next useful task itself.",
+      "result": "Scheduler now skips recently no-op Codex candidates, tries the next skill/error/feature signal, and uses a self-discovery prompt when no concrete signal is runnable."
     }
   ]
 }

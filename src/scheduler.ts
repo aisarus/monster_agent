@@ -60,11 +60,8 @@ export class SelfImprovementScheduler {
       return "Autopilot run skipped: queue is busy.";
     }
 
-    const taskText = await this.buildNextTaskText();
+    const taskText = await this.buildRunnableTaskText();
     if (this.codexRunner) {
-      if (await this.codexRunner.recentlyNooped(taskText)) {
-        return "Autopilot skipped: Codex recently made no changes for this task.";
-      }
       const message = await this.codexRunner.run(taskText);
       this.lastRunAt = new Date().toISOString();
       return message;
@@ -77,41 +74,101 @@ export class SelfImprovementScheduler {
   }
 
   async buildNextTaskText(): Promise<string> {
-    return (
-      (await this.skillEvaluator.buildImprovementTask()) ??
-      (await this.buildRecurringErrorTask()) ??
-      (await this.buildFeatureRequestTask()) ??
-      `[autopilot:self-improvement]\n${this.config.SELF_IMPROVEMENT_TASK}`
-    );
+    return (await this.buildCandidateTaskTexts())[0];
   }
 
-  private async buildRecurringErrorTask(): Promise<string | null> {
-    const errors = await this.learningLogger.readRecentEntries("errors", 20);
-    const recurring = mostFrequent(errors, 2);
-    if (!recurring) {
-      return null;
+  private async buildRunnableTaskText(): Promise<string> {
+    const candidates = await this.buildCandidateTaskTexts();
+    if (!this.codexRunner) {
+      return candidates[0];
+    }
+
+    for (const candidate of candidates) {
+      if (!(await this.codexRunner.recentlyNooped(candidate))) {
+        return candidate;
+      }
     }
 
     return [
-      "[autopilot:learning-error]",
-      `Разбери повторяющийся failure pattern: ${recurring.summary}`,
-      "Изучи data/learnings/ERRORS.md, найди минимальную причину и исправь один маленький gap.",
-      "Если pattern повторяемый и workflow стал понятен, создай или обнови skill.",
+      "[autopilot:self-discovery]",
+      "Все более конкретные self-improvement задачи недавно завершились без изменений.",
+      "Самостоятельно изучи README.md, data/memory/decisions.json, data/learnings, data/runtime и tests.",
+      "Найди один маленький проверяемый gap, который мешает daemon лучше строить себя через Codex.",
+      "Если безопасного изменения нет, добавь компактную запись в data/learnings/LEARNINGS.md с причиной.",
     ].join("\n");
   }
 
-  private async buildFeatureRequestTask(): Promise<string | null> {
-    const requests = await this.learningLogger.readRecentEntries("feature_requests", 10);
-    const request = requests[0];
-    if (!request) {
-      return null;
+  private async buildCandidateTaskTexts(): Promise<string[]> {
+    return [
+      ...(await this.buildSkillImprovementTasks()),
+      ...(await this.buildRecurringErrorTasks()),
+      ...(await this.buildFeatureRequestTasks()),
+      this.buildSelfDiscoveryTask(),
+    ];
+  }
+
+  private async buildSkillImprovementTasks(): Promise<string[]> {
+    const underperforming = await this.skillEvaluator.getUnderperformingSkills(0.7);
+    if (underperforming.length > 0) {
+      return underperforming.map(({ name, metrics }) =>
+        [
+          "[autopilot:skill-improvement]",
+          `Улучши скилл ${name}: task_success_rate=${metrics.task_success_rate.toFixed(2)}.`,
+          "Изучи failure_reasons, обнови SKILL.md через update_skill и добавь/обнови тесты если нужно.",
+        ].join("\n"),
+      );
     }
 
+    const stale = await this.skillEvaluator.getStaleSkills(14);
+    if (stale.length > 0) {
+      const [{ name, metrics }] = stale;
+      return [
+        [
+          "[autopilot:skill-review]",
+          `Проверь актуальность скилла ${name}: last_used=${metrics.last_used}.`,
+          "Если workflow устарел, обнови его через update_skill; если актуален, зафиксируй вывод в memory.",
+        ].join("\n"),
+      ];
+    }
+
+    return [];
+  }
+
+  private async buildRecurringErrorTasks(): Promise<string[]> {
+    const errors = await this.learningLogger.readRecentEntries("errors", 20);
+    const recurring = frequentPatterns(errors, 2);
+
+    return recurring.map((pattern) =>
+      [
+        "[autopilot:learning-error]",
+        `Разбери повторяющийся failure pattern: ${pattern.summary}`,
+        "Изучи data/learnings/ERRORS.md, найди минимальную причину и исправь один маленький gap.",
+        "Если pattern повторяемый и workflow стал понятен, создай или обнови skill.",
+      ].join("\n"),
+    );
+  }
+
+  private async buildFeatureRequestTasks(): Promise<string[]> {
+    const requests = await this.learningLogger.readRecentEntries("feature_requests", 10);
+
+    return requests.map((request) =>
+      [
+        "[autopilot:learning-feature-request]",
+        `Реализуй или уточни missing capability: ${request.summary}`,
+        "Изучи data/learnings/FEATURE_REQUESTS.md и сделай минимальный безопасный шаг.",
+        "Если scope слишком большой, добавь backlog/skill вместо широкой реализации.",
+      ].join("\n"),
+    );
+  }
+
+  private buildSelfDiscoveryTask(): string {
     return [
-      "[autopilot:learning-feature-request]",
-      `Реализуй или уточни missing capability: ${request.summary}`,
-      "Изучи data/learnings/FEATURE_REQUESTS.md и сделай минимальный безопасный шаг.",
-      "Если scope слишком большой, добавь backlog/skill вместо широкой реализации.",
+      "[autopilot:self-discovery]",
+      this.config.SELF_IMPROVEMENT_TASK,
+      "Самостоятельно выбери следующую маленькую задачу для улучшения Monster Agent.",
+      "Сначала изучи текущее состояние: README.md, data/memory/decisions.json, data/learnings, data/runtime, data/tasks и tests.",
+      "Выбери один проверяемый gap, реализуй минимальное изменение и добавь/обнови тест.",
+      "Не делай косметику, dashboard polish или широкий refactor без явного сигнала из логов.",
     ].join("\n");
   }
 
@@ -152,10 +209,10 @@ export class SelfImprovementScheduler {
   }
 }
 
-function mostFrequent(
+function frequentPatterns(
   entries: RecentLearningEntry[],
   minCount: number,
-): { summary: string; count: number } | null {
+): Array<{ summary: string; count: number }> {
   const counts = new Map<string, number>();
   for (const entry of entries) {
     const key = normalizePattern(entry.summary || entry.failureReason || "");
@@ -165,12 +222,10 @@ function mostFrequent(
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
 
-  const [summary, count] =
-    [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0] ?? [];
-  if (!summary || count < minCount) {
-    return null;
-  }
-  return { summary, count };
+  return [...counts.entries()]
+    .filter(([, count]) => count >= minCount)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([summary, count]) => ({ summary, count }));
 }
 
 function normalizePattern(value: string): string {

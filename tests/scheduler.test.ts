@@ -137,10 +137,65 @@ test("scheduler runs Codex executor instead of queueing an agent task when confi
 
   await expect(scheduler.runNow()).resolves.toBe("Codex run started.");
   expect(calls).toHaveLength(1);
-  expect(calls[0]).toContain("[autopilot:self-improvement]");
+  expect(calls[0]).toContain("[autopilot:self-discovery]");
 });
 
-test("scheduler skips a Codex task that recently produced no changes", async () => {
+test("scheduler skips recently no-op Codex candidates and runs the next signal", async () => {
+  const evaluator = new SkillEvaluator(join(dir, "metrics.json"));
+  await evaluator.recordTaskResult({
+    taskId: "task-1",
+    skillNames: ["git-workflow"],
+    success: false,
+    failureReason: "branch conflict",
+  });
+  await evaluator.recordTaskResult({
+    taskId: "task-2",
+    skillNames: ["git-workflow"],
+    success: false,
+    failureReason: "branch conflict",
+  });
+  await evaluator.recordTaskResult({
+    taskId: "task-3",
+    skillNames: ["shell-workflow"],
+    success: false,
+    failureReason: "command timeout",
+  });
+  await evaluator.recordTaskResult({
+    taskId: "task-4",
+    skillNames: ["shell-workflow"],
+    success: false,
+    failureReason: "command timeout",
+  });
+
+  const calls: string[] = [];
+  const scheduler = new SelfImprovementScheduler(
+    configFixture(),
+    agentFixture(),
+    taskQueueFixture(),
+    evaluator,
+    new LearningLogger(join(dir, "learnings")),
+    async () => {},
+    {
+      status() {
+        return "Codex runner: idle";
+      },
+      async recentlyNooped(taskText: string) {
+        return taskText.includes("git-workflow");
+      },
+      async run(taskText: string) {
+        calls.push(taskText);
+        return "Codex run started.";
+      },
+    } as never,
+  );
+
+  await expect(scheduler.runNow()).resolves.toBe("Codex run started.");
+  expect(calls).toHaveLength(1);
+  expect(calls[0]).toContain("shell-workflow");
+});
+
+test("scheduler falls back to self-discovery when all concrete Codex candidates no-op", async () => {
+  const calls: string[] = [];
   const scheduler = new SelfImprovementScheduler(
     configFixture(),
     agentFixture(),
@@ -152,16 +207,20 @@ test("scheduler skips a Codex task that recently produced no changes", async () 
       status() {
         return "Codex runner: idle";
       },
-      async recentlyNooped() {
-        return true;
+      async recentlyNooped(taskText: string) {
+        return !taskText.includes("Все более конкретные");
       },
-      async run() {
-        throw new Error("should not run");
+      async run(taskText: string) {
+        calls.push(taskText);
+        return "Codex run started.";
       },
     } as never,
   );
 
-  await expect(scheduler.runNow()).resolves.toContain("recently made no changes");
+  await expect(scheduler.runNow()).resolves.toBe("Codex run started.");
+  expect(calls).toHaveLength(1);
+  expect(calls[0]).toContain("[autopilot:self-discovery]");
+  expect(calls[0]).toContain("Все более конкретные");
 });
 
 

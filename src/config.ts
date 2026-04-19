@@ -44,6 +44,7 @@ const envSchema = z.object({
   CODEX_AUTOMATION_ENABLED: z.coerce.boolean().default(true),
   CODEX_MODEL: z.string().optional(),
   CODEX_TIMEOUT_MINUTES: z.coerce.number().int().positive().default(30),
+  CODEX_PROGRESS_INTERVAL_MINUTES: z.coerce.number().int().positive().default(5),
   REPORT_INTERVAL_MINUTES: z.coerce.number().int().positive().default(30),
   SELF_IMPROVEMENT_ENABLED: z.coerce.boolean().default(false),
   SELF_IMPROVEMENT_INTERVAL_MINUTES: z.coerce.number().int().positive().default(60),

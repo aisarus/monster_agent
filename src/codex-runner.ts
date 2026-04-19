@@ -22,6 +22,7 @@ type ExecFn = (
 export class CodexRunner {
   private running = false;
   private lastStartedAt: string | undefined;
+  private activeTask = "";
 
   constructor(
     private readonly config: AppConfig,
@@ -33,7 +34,10 @@ export class CodexRunner {
     return [
       `Codex runner: ${this.running ? "running" : "idle"}`,
       `Last started: ${this.lastStartedAt ?? "never"}`,
-    ].join("\n");
+      this.running && this.activeTask ? `Task: ${compactTask(this.activeTask)}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
   }
 
   async run(taskText: string): Promise<string> {
@@ -43,8 +47,10 @@ export class CodexRunner {
 
     this.running = true;
     this.lastStartedAt = new Date().toISOString();
+    this.activeTask = taskText;
     void this.execute(taskText).finally(() => {
       this.running = false;
+      this.activeTask = "";
     });
 
     return "Codex run started.";
@@ -76,7 +82,7 @@ export class CodexRunner {
       }
       codexArgs.push(buildCodexPrompt(taskText));
 
-      await this.execFn("codex", codexArgs, this.execOptions(this.config.CODEX_TIMEOUT_MINUTES));
+      await this.runCodexWithProgress(codexArgs, taskText);
       const summary = await readOptional(outputPath);
 
       const checks = await this.runChecks();
@@ -131,6 +137,51 @@ export class CodexRunner {
         output: [err.stdout, err.stderr, err.message].filter(Boolean).join("\n"),
       };
     }
+  }
+
+  private async runCodexWithProgress(args: string[], taskText: string): Promise<void> {
+    const started = Date.now();
+    const intervalMs = this.config.CODEX_PROGRESS_INTERVAL_MINUTES * 60 * 1000;
+    const timer =
+      intervalMs > 0
+        ? setInterval(() => {
+            void this.notifyProgress(started, taskText);
+          }, intervalMs)
+        : undefined;
+
+    try {
+      await this.execFn("codex", args, this.execOptions(this.config.CODEX_TIMEOUT_MINUTES));
+    } catch (error) {
+      if (isTimeoutError(error)) {
+        await this.notify(
+          [
+            "Codex timeout.",
+            `Elapsed: ${formatElapsed(Date.now() - started)}`,
+            `Limit: ${this.config.CODEX_TIMEOUT_MINUTES} min`,
+            compactTask(taskText),
+          ].join("\n"),
+        );
+      }
+      throw error;
+    } finally {
+      if (timer) {
+        clearInterval(timer);
+      }
+    }
+  }
+
+  private async notifyProgress(started: number, taskText: string): Promise<void> {
+    const status = await this.git(["status", "--porcelain"]).catch((error: unknown) =>
+      `git status failed: ${(error as Error).message}`,
+    );
+    await this.notify(
+      [
+        "Codex still running.",
+        `Elapsed: ${formatElapsed(Date.now() - started)}`,
+        compactTask(taskText),
+        status.trim() ? `Changed:\n${compact(status, 1000)}` : "Workspace: clean",
+      ].join("\n"),
+    );
   }
 
   private async checkChangedFilesForSecrets(
@@ -224,6 +275,22 @@ function compactTask(text: string): string {
 function compact(text: string, maxLength: number): string {
   const value = text.trim();
   return value.length > maxLength ? `${value.slice(0, maxLength)}...` : value;
+}
+
+function formatElapsed(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}m ${seconds}s`;
+}
+
+function isTimeoutError(error: unknown): boolean {
+  const err = error as { code?: string; signal?: string; message?: string };
+  return (
+    err.code === "ETIMEDOUT" ||
+    err.signal === "SIGTERM" ||
+    /timed out|timeout/i.test(err.message ?? "")
+  );
 }
 
 async function readOptional(path: string): Promise<string> {

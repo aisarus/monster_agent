@@ -84,6 +84,8 @@ pause the queue or autopilot. Direct chat uses `DIRECT_CHAT_PROVIDER` so `/chat`
 cloud model such as Groq while autonomous coding tasks use `DEFAULT_PROVIDER`.
 When `CODEX_AUTOMATION_ENABLED=true`, autopilot self-improvement runs `codex exec` in this repo,
 then the daemon runs checks, commits safe changes, pushes to GitHub, and sends a short Telegram report.
+Long Codex runs send progress pings every `CODEX_PROGRESS_INTERVAL_MINUTES` minutes and report timeout
+after `CODEX_TIMEOUT_MINUTES`.
 
 ## Dashboard
 

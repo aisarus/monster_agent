@@ -3,10 +3,12 @@
     "git-workflow": {
       "invocations": 2,
       "successes": 0,
-      "failures": 0,
+      "failures": 1,
       "task_success_rate": 0,
       "avg_steps_saved": 0,
-      "failure_reasons": [],
+      "failure_reasons": [
+        "Skill already exists: git-workflow"
+      ],
       "version_started_at": "2026-04-19T08:45:50.418Z",
       "version_history": [],
       "current_version": "1.0.0",

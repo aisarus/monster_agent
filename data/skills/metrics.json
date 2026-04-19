@@ -1,18 +1,19 @@
 {
   "skills": {
     "git-workflow": {
-      "invocations": 2,
+      "invocations": 3,
       "successes": 0,
-      "failures": 1,
+      "failures": 2,
       "task_success_rate": 0,
       "avg_steps_saved": 0,
       "failure_reasons": [
+        "Skill already exists: git-workflow",
         "Skill already exists: git-workflow"
       ],
       "version_started_at": "2026-04-19T08:45:50.418Z",
       "version_history": [],
       "current_version": "1.0.0",
-      "last_used": "2026-04-19T08:49:21.999Z"
+      "last_used": "2026-04-19T09:20:11.422Z"
     }
   }
 }

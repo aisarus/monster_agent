@@ -12,6 +12,7 @@ import { SkillEvaluator } from "../skills/SkillEvaluator.js";
 import { SkillLoader } from "../skills/SkillLoader.js";
 import { SkillWriter } from "../skills/SkillWriter.js";
 import { TaskQueue } from "../tasks.js";
+import { BraveResearchTool } from "../tools/research.js";
 import { ToolRegistry } from "../tools/registry.js";
 import { WorkspaceTools } from "../tools/workspace.js";
 
@@ -41,6 +42,7 @@ const tools = new ToolRegistry(
   skillLoader,
   skillWriter,
   skillEvaluator,
+  new BraveResearchTool(config.BRAVE_API_KEY),
 );
 const bootstrap = new BootstrapLoader(
   config.BOOTSTRAP_DIR,

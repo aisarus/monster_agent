@@ -14,8 +14,10 @@ import { LearningLogger } from "./skills/LearningLogger.js";
 import { SkillEvaluator } from "./skills/SkillEvaluator.js";
 import { SkillLoader } from "./skills/SkillLoader.js";
 import { SkillWriter } from "./skills/SkillWriter.js";
+import { formatTaskCompleted, formatTaskFailed, formatTaskStarted } from "./task-notifications.js";
 import { createTelegramBot } from "./telegram.js";
 import { TaskQueue } from "./tasks.js";
+import { BraveResearchTool } from "./tools/research.js";
 import { ToolRegistry } from "./tools/registry.js";
 import { WorkspaceTools } from "./tools/workspace.js";
 
@@ -39,6 +41,7 @@ const tools = new ToolRegistry(
   skillLoader,
   skillWriter,
   skillEvaluator,
+  new BraveResearchTool(config.BRAVE_API_KEY),
 );
 const bootstrap = new BootstrapLoader(
   config.BOOTSTRAP_DIR,
@@ -83,17 +86,13 @@ const agentRuntime = new AgentRuntime(
   config.AGENT_TOOL_OUTPUT_CHARS,
   {
     async onTaskStarted(task) {
-      await sendOwnerMessage(`Started task ${task.id.slice(0, 8)}.`);
+      await sendOwnerMessage(formatTaskStarted(task));
     },
     async onTaskCompleted(task) {
-      await sendOwnerMessage(
-        [`Completed task ${task.id.slice(0, 8)}.`, "", task.result ?? "No result."].join("\n"),
-      );
+      await sendOwnerMessage(formatTaskCompleted(task));
     },
     async onTaskFailed(task) {
-      await sendOwnerMessage(
-        [`Task ${task.id.slice(0, 8)} failed.`, task.error ?? "Unknown error."].join("\n"),
-      );
+      await sendOwnerMessage(formatTaskFailed(task));
     },
   },
 );
@@ -130,6 +129,9 @@ requireTelegramConfig(config);
 const heartbeatMs = config.HEARTBEAT_MINUTES * 60 * 1000;
 setInterval(async () => {
   if (!config.TELEGRAM_OWNER_ID) {
+    return;
+  }
+  if (await runtimeState.isPaused()) {
     return;
   }
   try {

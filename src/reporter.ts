@@ -32,6 +32,10 @@ export class ActivityReporter {
     const changedTasks = await this.tasks.changedSince(this.lastReportAt);
     this.lastReportAt = now;
 
+    if (await this.runtimeState.isPaused()) {
+      return;
+    }
+
     await this.notify(await this.formatReport(changedTasks));
   }
 

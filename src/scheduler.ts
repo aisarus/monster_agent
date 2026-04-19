@@ -117,6 +117,11 @@ export class SelfImprovementScheduler {
         return;
       }
 
+      if (await this.agent.isPaused()) {
+        this.scheduleNext();
+        return;
+      }
+
       if (await this.tasks.hasPendingWork()) {
         await this.notify("Autopilot skipped: queue is busy.");
         this.scheduleNext();

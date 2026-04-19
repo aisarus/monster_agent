@@ -36,3 +36,18 @@ test("sends a plain activity report", async () => {
   expect(messages[0]).toContain("завершил: 1");
   expect(messages[0]).toContain("added report loop");
 });
+
+test("does not send periodic reports while runtime is paused", async () => {
+  const messages: string[] = [];
+  const tasks = new TaskQueue(join(dir, "tasks.json"));
+  const runtimeState = new RuntimeState(join(dir, "runtime", "state.json"));
+  const budget = new BudgetTracker(join(dir, "budget", "usage.json"), 1, 10);
+  const reporter = new ActivityReporter(30, runtimeState, tasks, budget, async (message) => {
+    messages.push(message);
+  });
+
+  await runtimeState.pause("Paused from Telegram.");
+  await reporter.sendReport();
+
+  expect(messages).toHaveLength(0);
+});

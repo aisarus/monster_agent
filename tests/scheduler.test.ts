@@ -93,6 +93,25 @@ test("scheduler chooses recent feature request when no stronger signal exists", 
   await expect(scheduler.buildNextTaskText()).resolves.toContain("add voice transcription");
 });
 
+test("scheduled autopilot tick stays quiet while runtime is paused", async () => {
+  const messages: string[] = [];
+  const scheduler = new SelfImprovementScheduler(
+    { ...configFixture(), SELF_IMPROVEMENT_ENABLED: true },
+    agentFixture({ paused: true }),
+    taskQueueFixture(),
+    new SkillEvaluator(join(dir, "metrics.json")),
+    new LearningLogger(join(dir, "learnings")),
+    async (message) => {
+      messages.push(message);
+    },
+  );
+
+  await (scheduler as unknown as { tick: () => Promise<void> }).tick();
+  scheduler.disable();
+
+  expect(messages).toHaveLength(0);
+});
+
 function configFixture(): AppConfig {
   return {
     TELEGRAM_BOT_TOKEN: "token",
@@ -134,10 +153,10 @@ function configFixture(): AppConfig {
   };
 }
 
-function agentFixture(): AgentRuntime {
+function agentFixture(options: { paused?: boolean } = {}): AgentRuntime {
   return {
     async isPaused() {
-      return false;
+      return options.paused ?? false;
     },
     async enqueue(text: string) {
       return {

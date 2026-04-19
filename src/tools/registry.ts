@@ -3,6 +3,7 @@ import { SkillLoader } from "../skills/SkillLoader.js";
 import { SkillWriter, type SkillContent } from "../skills/SkillWriter.js";
 import type { SkillSecurity } from "../skills/SkillLoader.js";
 import { SkillEvaluator } from "../skills/SkillEvaluator.js";
+import { BraveResearchTool } from "./research.js";
 
 export type AgentToolName =
   | "list_files"
@@ -13,6 +14,7 @@ export type AgentToolName =
   | "update_skill"
   | "write_file"
   | "run_command"
+  | "web_search"
   | "git_status"
   | "git_branch"
   | "git_commit"
@@ -30,6 +32,7 @@ export class ToolRegistry {
     private readonly skillLoader: SkillLoader,
     private readonly skillWriter: SkillWriter,
     private readonly skillEvaluator: SkillEvaluator,
+    private readonly research: BraveResearchTool = new BraveResearchTool(undefined),
   ) {}
 
   async run(call: AgentToolCall): Promise<ToolResult> {
@@ -53,6 +56,11 @@ export class ToolRegistry {
         );
       case "run_command":
         return this.workspace.runCommand(requiredStringArg(call.args, "command"));
+      case "web_search":
+        return this.research.webSearch(
+          requiredStringArg(call.args, "query"),
+          numberArg(call.args, "count", 5),
+        );
       case "git_status":
         return this.workspace.gitStatus();
       case "git_branch":
@@ -152,6 +160,11 @@ function requiredStringArg(args: Record<string, unknown> | undefined, key: strin
 function stringArg(args: Record<string, unknown> | undefined, key: string, fallback: string): string {
   const value = args?.[key];
   return typeof value === "string" && value.trim() ? value : fallback;
+}
+
+function numberArg(args: Record<string, unknown> | undefined, key: string, fallback: number): number {
+  const value = args?.[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
 function requiredStringArrayArg(args: Record<string, unknown> | undefined, key: string): string[] {

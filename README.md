@@ -81,6 +81,8 @@ npm run dev
 
 The agent sends an activity report every `REPORT_INTERVAL_MINUTES` minutes. Direct chat replies do not
 pause the queue or autopilot.
+Direct chat uses `DIRECT_CHAT_PROVIDER` so `/chat` can prefer Gemini while autonomous coding tasks
+use `DEFAULT_PROVIDER`.
 
 ## Dashboard
 

@@ -24,6 +24,31 @@ export class Doctor {
     checks.push(checkValue("Gemini key", Boolean(this.config.GEMINI_API_KEY), "warn"));
     checks.push(checkValue("OpenAI key", Boolean(this.config.OPENAI_API_KEY), "warn"));
     checks.push(checkValue("GitHub token", Boolean(this.config.GITHUB_TOKEN), "warn"));
+    checks.push({
+      name: "Default provider",
+      status: "pass",
+      detail: this.config.DEFAULT_PROVIDER,
+    });
+    checks.push({
+      name: "Direct chat provider",
+      status: "pass",
+      detail: this.config.DIRECT_CHAT_PROVIDER,
+    });
+    checks.push({
+      name: "Ollama",
+      status: this.config.OLLAMA_ENABLED ? "pass" : "warn",
+      detail: this.config.OLLAMA_ENABLED
+        ? `${this.config.OLLAMA_BASE_URL} / ${this.config.OLLAMA_MODEL}`
+        : "disabled",
+    });
+    checks.push({
+      name: "Dashboard",
+      status: this.config.DASHBOARD_ENABLED ? "pass" : "warn",
+      detail: this.config.DASHBOARD_ENABLED
+        ? this.config.DASHBOARD_PUBLIC_URL?.trim() ||
+          `http://${this.config.DASHBOARD_HOST}:${this.config.DASHBOARD_PORT}`
+        : "disabled",
+    });
 
     checks.push(await checkFile("Memory file", this.config.MEMORY_FILE));
     checks.push(await checkJsonFile("Tasks JSON", this.config.TASKS_FILE));

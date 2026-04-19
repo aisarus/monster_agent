@@ -100,6 +100,7 @@ function configFixture(port: number): AppConfig {
     GEMINI_DEFAULT_MODEL: "gemini-1.5-flash",
     GEMINI_FALLBACK_MODELS: "",
     DEFAULT_PROVIDER: "gemini",
+    DIRECT_CHAT_PROVIDER: "gemini",
     MONTHLY_BUDGET_USD: 10,
     DAILY_BUDGET_USD: 1,
     HEARTBEAT_MINUTES: 15,

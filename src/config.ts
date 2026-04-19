@@ -17,6 +17,7 @@ const envSchema = z.object({
   GEMINI_DEFAULT_MODEL: z.string().default("gemini-1.5-flash"),
   GEMINI_FALLBACK_MODELS: z.string().default(""),
   DEFAULT_PROVIDER: z.enum(["openai", "gemini", "local"]).default("gemini"),
+  DIRECT_CHAT_PROVIDER: z.enum(["openai", "gemini", "local"]).default("gemini"),
   MONTHLY_BUDGET_USD: z.coerce.number().nonnegative().default(10),
   DAILY_BUDGET_USD: z.coerce.number().nonnegative().default(1),
   HEARTBEAT_MINUTES: z.coerce.number().int().positive().default(15),

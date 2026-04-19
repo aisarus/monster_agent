@@ -33,6 +33,11 @@ const tasks = new TaskQueue(config.TASKS_FILE);
 const runtimeState = new RuntimeState(config.RUNTIME_STATE_FILE);
 const cooldowns = new ModelCooldowns(config.MODEL_COOLDOWNS_FILE);
 const llm = new LlmRouter(config, budget, cooldowns);
+const directChatLlm = new LlmRouter(
+  { ...config, DEFAULT_PROVIDER: config.DIRECT_CHAT_PROVIDER },
+  budget,
+  cooldowns,
+);
 const skillLoader = new SkillLoader();
 const skillWriter = new SkillWriter("data/workspace/skills", skillLoader);
 const skillEvaluator = new SkillEvaluator(config.SKILL_METRICS_FILE);
@@ -50,7 +55,7 @@ const bootstrap = new BootstrapLoader(
   config.BOOTSTRAP_MAX_TOTAL_CHARS,
 );
 const doctor = new Doctor(config, cooldowns);
-const directChat = new DirectChat(llm);
+const directChat = new DirectChat(directChatLlm);
 
 await memory.ensure();
 await learningLogger.ensureInitialized();

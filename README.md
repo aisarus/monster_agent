@@ -99,10 +99,13 @@ DASHBOARD_ENABLED=true
 DASHBOARD_HOST=127.0.0.1
 DASHBOARD_PORT=8787
 DASHBOARD_TOKEN=
+DASHBOARD_PUBLIC_URL=
 ```
 
 Keep `DASHBOARD_HOST=127.0.0.1` for server use unless a reverse proxy or firewall is configured.
 Set `DASHBOARD_TOKEN` when exposing the dashboard beyond a local SSH tunnel.
+Use `/dashboard` in Telegram to get a one-command access hint or an open button when
+`DASHBOARD_PUBLIC_URL` is configured.
 
 ## Safety Rules
 

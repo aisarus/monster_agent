@@ -77,6 +77,17 @@ export function createTelegramBot(
     await ctx.reply(await agent.runtimeStatus());
   });
 
+  bot.command("dashboard", async (ctx) => {
+    const dashboard = formatDashboardLink(config);
+    await ctx.reply(dashboard.text, dashboard.buttonUrl
+      ? {
+          reply_markup: {
+            inline_keyboard: [[{ text: "Open dashboard", url: dashboard.buttonUrl }]],
+          },
+        }
+      : undefined);
+  });
+
   bot.command("report", async (ctx) => {
     await ctx.reply("Preparing report.");
     await reporter.sendReport();
@@ -193,6 +204,29 @@ export function formatSkillContent(skill: Skill | null, maxLength = 3500): strin
       .join("\n"),
     maxLength,
   );
+}
+
+export function formatDashboardLink(config: AppConfig): { text: string; buttonUrl?: string } {
+  const localUrl = `http://${config.DASHBOARD_HOST}:${config.DASHBOARD_PORT}`;
+  const publicUrl = config.DASHBOARD_PUBLIC_URL?.trim();
+  if (publicUrl) {
+    return {
+      text: ["Dashboard:", publicUrl].join("\n"),
+      buttonUrl: publicUrl,
+    };
+  }
+
+  return {
+    text: [
+      "Dashboard is running locally on the server:",
+      localUrl,
+      "",
+      "For one-command access from your computer:",
+      `ssh -L ${config.DASHBOARD_PORT}:${config.DASHBOARD_HOST}:${config.DASHBOARD_PORT} user@server`,
+      "",
+      "Then open the local URL above. Set DASHBOARD_PUBLIC_URL to make this command send a button.",
+    ].join("\n"),
+  };
 }
 
 function truncateTelegramText(text: string, maxLength: number): string {

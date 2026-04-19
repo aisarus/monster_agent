@@ -39,6 +39,7 @@ const envSchema = z.object({
   DASHBOARD_HOST: z.string().default("127.0.0.1"),
   DASHBOARD_PORT: z.coerce.number().int().positive().default(8787),
   DASHBOARD_TOKEN: z.string().optional(),
+  DASHBOARD_PUBLIC_URL: z.string().optional(),
   REPORT_INTERVAL_MINUTES: z.coerce.number().int().positive().default(30),
   SELF_IMPROVEMENT_ENABLED: z.coerce.boolean().default(false),
   SELF_IMPROVEMENT_INTERVAL_MINUTES: z.coerce.number().int().positive().default(60),

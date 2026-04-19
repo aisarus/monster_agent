@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { formatSkillContent, formatSkillsList } from "../src/telegram.js";
+import { formatDashboardLink, formatSkillContent, formatSkillsList } from "../src/telegram.js";
 import type { Skill } from "../src/skills/SkillLoader.js";
 
 const skill: Skill = {
@@ -29,4 +29,27 @@ test("formats and truncates a single skill for Telegram", () => {
 
 test("formats missing skill response", () => {
   expect(formatSkillContent(null)).toBe("Skill not found.");
+});
+
+test("formats dashboard link with public url button target", () => {
+  const dashboard = formatDashboardLink({
+    DASHBOARD_HOST: "127.0.0.1",
+    DASHBOARD_PORT: 8787,
+    DASHBOARD_PUBLIC_URL: "https://agent.example.com",
+  } as Parameters<typeof formatDashboardLink>[0]);
+
+  expect(dashboard.text).toContain("https://agent.example.com");
+  expect(dashboard.buttonUrl).toBe("https://agent.example.com");
+});
+
+test("formats dashboard link with ssh tunnel hint when public url is missing", () => {
+  const dashboard = formatDashboardLink({
+    DASHBOARD_HOST: "127.0.0.1",
+    DASHBOARD_PORT: 8787,
+    DASHBOARD_PUBLIC_URL: undefined,
+  } as Parameters<typeof formatDashboardLink>[0]);
+
+  expect(dashboard.text).toContain("http://127.0.0.1:8787");
+  expect(dashboard.text).toContain("ssh -L 8787:127.0.0.1:8787");
+  expect(dashboard.buttonUrl).toBeUndefined();
 });
